@@ -1,14 +1,15 @@
-# Helm values for kubernetes-dashboard chart
-# Override defaults if needed
 app:
   ingress:
-    enabled: false  # We will create a custom Ingress outside Helm
+    enabled: false
 
-# Security: create a NodePort or ClusterIP; Ingress will handle external access
 service:
   type: ClusterIP
   externalPort: 443
 
-# Optional: enable metrics-scraper
 metricsScraper:
   enabled: true
+
+kong:
+  proxy:
+    http:
+      enabled: true
