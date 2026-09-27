@@ -15,9 +15,16 @@ spec:
       labels:
         app: cloudflared
     spec:
+      # WSL2 mirrored networking breaks NAT'd pod egress (microsoft/WSL#11819);
+      # host-networked pods are unaffected.
+      hostNetwork: true
+      # dnsPolicy Default: resolves via host resolv.conf (LAN DNS). Connected-UDP
+      # DNS to ClusterIPs fails for hostNetwork pods in WSL2 (connect-time route
+      # pins eth2; coredns replies arrive via flannel.1 and are dropped).
+      dnsPolicy: Default
       containers:
       - name: cloudflared
-        image: cloudflare/cloudflared:latest
+        image: cloudflare/cloudflared:2026.9.3
         args:
         - tunnel
         - --no-autoupdate
