@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cloudflared-config
+  namespace: base-apps
+data:
+  config.yml: |
+    # Locally-managed tunnel ingress (the Cloudflare UI does not expose
+    # httpHostHeader). Tunnel ID must match credentials.json.
+    tunnel: 69a4546d-b110-42b0-9e40-76f39d3f0de2
+    credentials-file: /etc/cloudflared/credentials.json
+    ingress:
+      # Immich via ingress-nginx VIP; Host header selects the nginx vhost
+      - hostname: photos.daemonagent.net
+        service: http://192.168.12.61:80
+        originRequest:
+          httpHostHeader: immich.home
+          connectTimeout: 30s
+          noTLSVerify: true
+      # Tandoor
+      - hostname: recipes.daemonagent.net
+        service: http://192.168.12.61:80
+        originRequest:
+          httpHostHeader: tandoor.home
+          connectTimeout: 30s
+          noTLSVerify: true
+      # Catch-all: reject anything not listed above
+      - service: http_status:404

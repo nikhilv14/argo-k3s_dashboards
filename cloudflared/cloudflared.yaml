@@ -27,14 +27,21 @@ spec:
         image: cloudflare/cloudflared:2026.9.3
         args:
         - tunnel
+        - --config
+        - /etc/cloudflared/config.yml
         - --no-autoupdate
         - run
-        env:
-        - name: TUNNEL_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: cloudflared-creds
-              key: TUNNEL_TOKEN 
+        # Locally-managed tunnel: ingress (with httpHostHeader) lives in
+        # tunnel-configmap.yaml; credentials in cloudflared-credentials.
+        volumeMounts:
+        - name: config
+          mountPath: /etc/cloudflared/config.yml
+          subPath: config.yml
+          readOnly: true
+        - name: credentials
+          mountPath: /etc/cloudflared/credentials.json
+          subPath: credentials.json
+          readOnly: true
         resources:
           requests:
             cpu: 10m
@@ -42,3 +49,10 @@ spec:
           limits:
             cpu: 100m
             memory: 128Mi
+      volumes:
+      - name: config
+        configMap:
+          name: cloudflared-config
+      - name: credentials
+        secret:
+          secretName: cloudflared-credentials
