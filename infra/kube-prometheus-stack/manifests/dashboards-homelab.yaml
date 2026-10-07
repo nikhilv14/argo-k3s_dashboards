@@ -1,0 +1,147 @@
+# "Homelab Quick View" dashboard, auto-loaded by the Grafana sidecar.
+# Prometheus panels use the default datasource; Loki panels reference the
+# loki datasource by the uid set in kube-prometheus-stack values.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-homelab
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  homelab-quick-view.json: |
+    {
+      "title": "Homelab Quick View",
+      "uid": "homelab-quick-view",
+      "tags": ["homelab", "overview"],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": { "from": "now-6h", "to": "now" },
+      "templating": { "list": [] },
+      "panels": [
+        {
+          "id": 1, "title": "k3s Nodes Ready", "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "sum(kube_node_status_condition{condition=\"Ready\",status=\"true\"})" } ],
+          "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 3 } ] } } }
+        },
+        {
+          "id": 2, "title": "PVE Nodes Up", "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 4, "y": 0 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "sum(pve_up{id=~\"node/.*\"})" } ],
+          "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 3 } ] } } }
+        },
+        {
+          "id": 3, "title": "PVE Guests Running", "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 8, "y": 0 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "sum(pve_up{id=~\"qemu/.*|lxc/.*\"} == 1)" } ]
+        },
+        {
+          "id": 4, "title": "Running Pods", "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 12, "y": 0 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "sum(kube_pod_status_phase{phase=\"Running\"})" } ]
+        },
+        {
+          "id": 5, "title": "Alerts Firing", "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 16, "y": 0 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "sum(ALERTS{alertstate=\"firing\"}) or vector(0)" } ],
+          "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "red", "value": 1 } ] } } }
+        },
+        {
+          "id": 6, "title": "Log Lines/s", "type": "stat",
+          "gridPos": { "h": 4, "w": 4, "x": 20, "y": 0 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [ { "expr": "sum(rate({job=~\".+\"}[$__rate_interval]))", "refId": "A" } ],
+          "fieldConfig": { "defaults": { "unit": "short" } }
+        },
+        {
+          "id": 10, "title": "Node CPU (k3s)", "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 4 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "100 * (1 - avg by (instance)(rate(node_cpu_seconds_total{mode=\"idle\"}[$__rate_interval])))", "legendFormat": "{{instance}}" } ],
+          "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
+        },
+        {
+          "id": 11, "title": "Node Memory (k3s)", "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 4 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "100 * (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)", "legendFormat": "{{instance}}" } ],
+          "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
+        },
+        {
+          "id": 12, "title": "PVE Node CPU", "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 4 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "100 * pve_cpu_usage_ratio{id=~\"node/.*\"}", "legendFormat": "{{id}}" } ],
+          "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
+        },
+        {
+          "id": 20, "title": "Filesystem Usage (k3s)", "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 12 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "100 * (1 - node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay|squashfs\",mountpoint!~\"/run.*|/boot.*\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay|squashfs\",mountpoint!~\"/run.*|/boot.*\"})", "legendFormat": "{{instance}} {{mountpoint}}" } ],
+          "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 80 }, { "color": "red", "value": 90 } ] } } }
+        },
+        {
+          "id": 21, "title": "Longhorn Volume Health", "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "longhorn_volume_robustness", "legendFormat": "{{volume}}" } ],
+          "fieldConfig": { "defaults": { "custom": { "mappingType": 2, "valueMappings": [ { "type": "value", "options": { "0": { "text": "faulted", "color": "red" }, "1": { "text": "degraded", "color": "orange" }, "2": { "text": "healthy", "color": "green" } } } ] } } }
+        },
+        {
+          "id": 22, "title": "PVE Node Memory", "type": "timeseries",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 12 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "100 * pve_memory_usage_bytes{id=~\"node/.*\"} / pve_memory_size_bytes{id=~\"node/.*\"}", "legendFormat": "{{id}}" } ],
+          "fieldConfig": { "defaults": { "unit": "percent", "max": 100 } }
+        },
+        {
+          "id": 30, "title": "PVC Usage Top 10", "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 20 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "topk(10, 100 * kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes)", "legendFormat": "{{namespace}}/{{persistentvolumeclaim}}" } ],
+          "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 80 }, { "color": "red", "value": 90 } ] } } }
+        },
+        {
+          "id": 31, "title": "PVE Storage Usage", "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 20 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "100 * pve_disk_usage_bytes{id=~\"storage/.*\"} / pve_disk_size_bytes{id=~\"storage/.*\"}", "legendFormat": "{{id}}" } ],
+          "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 80 }, { "color": "red", "value": 90 } ] } } }
+        },
+        {
+          "id": 40, "title": "Log Rate by Namespace", "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 28 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [ { "expr": "sum by (namespace) (rate({job=~\".+\"}[$__rate_interval]))", "refId": "A" } ],
+          "fieldConfig": { "defaults": { "unit": "ops" } }
+        },
+        {
+          "id": 41, "title": "Recent Logs (Errors Highlighted)", "type": "logs",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 28 },
+          "datasource": { "type": "loki", "uid": "loki" },
+          "targets": [ { "expr": "{job=~\".+\"}", "refId": "A" } ],
+          "options": { "showLabels": false, "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending" }
+        },
+        {
+          "id": 50, "title": "PVE VM/LXC Disk Usage", "type": "timeseries",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 36 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "100 * pve_disk_usage_bytes{id=~\"qemu/.*|lxc/.*\"} / pve_disk_size_bytes{id=~\"qemu/.*|lxc/.*\"}", "legendFormat": "{{id}}" } ],
+          "fieldConfig": { "defaults": { "unit": "percent", "max": 100, "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 80 }, { "color": "red", "value": 90 } ] } } }
+        },
+        {
+          "id": 51, "title": "PVE Not Backed Up Guests", "type": "stat",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 36 },
+          "datasource": { "type": "prometheus" },
+          "targets": [ { "expr": "sum(pve_not_backed_up_total) or vector(0)" } ],
+          "fieldConfig": { "defaults": { "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 } ] } } }
+        }
+      ]
+    }

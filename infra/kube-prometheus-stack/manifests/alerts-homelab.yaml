@@ -1,0 +1,109 @@
+# Cluster + PVE alert rules. Prometheus picks these up cluster-wide
+# (ruleSelectorNilUsesHelmValues: false in kube-prometheus-stack values).
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: homelab-alerts
+  namespace: monitoring
+  labels:
+    scope: homelab
+spec:
+  groups:
+    # ---------- k3s cluster ----------
+    - name: homelab.nodes
+      rules:
+        - alert: K3sNodeDown
+          expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "k3s node {{ $labels.node }} not Ready"
+            description: "Node {{ $labels.node }} has not been Ready for 5 minutes."
+        - alert: NodeFilesystemAlmostFull
+          expr: |
+            node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs",mountpoint!~"/run.*|/boot.*"}
+              / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs",mountpoint!~"/run.*|/boot.*"} < 0.10
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} >90% full"
+        - alert: NodeHighMemoryPressure
+          expr: |
+            (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.9
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Node {{ $labels.instance }} memory >90% used"
+    - name: homelab.storage
+      rules:
+        - alert: LonghornVolumeDegraded
+          expr: longhorn_volume_robustness{condition="degraded"} == 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Longhorn volume {{ $labels.volume }} degraded"
+        - alert: LonghornVolumeFaulted
+          expr: longhorn_volume_robustness{condition="faulted"} == 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Longhorn volume {{ $labels.volume }} FAULTED"
+        - alert: PVCAlmostFull
+          expr: kubelet_volume_stats_used_bytes / kubelet_volume_stats_capacity_bytes > 0.9
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVC {{ $labels.persistentvolumeclaim }} in {{ $labels.namespace }} >90% full"
+    - name: homelab.workloads
+      rules:
+        - alert: PodCrashLooping
+          expr: increase(kube_pod_container_status_restarts_total[1h]) > 5
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} restarting frequently"
+        - alert: CertificateExpiringSoon
+          expr: |
+            certmanager_certificate_expiry_timestamp_seconds - time() < 14 * 86400
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate {{ $labels.certificate_name }} expires within 14 days"
+    - name: homelab.observability
+      rules:
+        - alert: PVEExporterDown
+          expr: up{job=~"pve-exporter-(201|220|130)"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVE exporter target {{ $labels.job }} down"
+            description: "Prometheus cannot scrape {{ $labels.job }} for 10 minutes; PVE metrics stale."
+        - alert: PVENodeDown
+          expr: pve_up{id=~"node/.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Proxmox node {{ $labels.id }} is down"
+        - alert: PVENodeUptimeReset
+          expr: pve_uptime_seconds{id=~"node/.*"} < 300
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Proxmox node {{ $labels.id }} rebooted"
+        - alert: LogIngestStalled
+          expr: sum(increase(loki_distributor_lines_received_total[15m])) == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Loki has received no log lines for 15 minutes"
