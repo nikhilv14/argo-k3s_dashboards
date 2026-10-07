@@ -45,8 +45,13 @@ alertmanager:
               storage: 2Gi
 
 grafana:
-  # Homelab default; rotate it (or set admin.existingSecret) after first login.
-  adminPassword: changeme-rotate-me
+  # Admin credentials live in the SealedSecret argocd-sealed grafana-admin
+  # (infra/kube-prometheus-stack/admin-secret.yaml). Rotate by re-sealing that
+  # secret and restarting Grafana; do NOT put the password here in plain text
+  # (a plaintext value also breaks the dashboard sidecar when it drifts from
+  # the live UI password).
+  admin:
+    existingSecret: grafana-admin
   resources:
     requests:
       cpu: 50m
