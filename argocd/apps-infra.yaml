@@ -42,9 +42,11 @@ metadata:
 spec:
   project: infra
   source:
-    repoURL: https://bitnami-labs.github.io/sealed-secrets
+# sealed-secrets chart 2.18.0 has been pruned from the Bitnami chart repo and
+# OCI registry; pin to the latest available Bitnami OCI chart (2.20.0).
+    repoURL: oci://registry-1.docker.io/bitnamicharts
     chart: sealed-secrets
-    targetRevision: 2.18.0
+    targetRevision: 2.20.0
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
@@ -71,6 +73,14 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: metallb-system
+  # The metallb controller rewrites the CRD conversion webhook caBundle and
+  # service reference at startup; ignore so it doesn't diff forever.
+  ignoreDifferences:
+    - group: apiextensions.k8s.io
+      kind: CustomResourceDefinition
+      name: bgppeers.metallb.io
+      jsonPointers:
+        - /spec/conversion
   syncPolicy:
     automated:
       prune: true
@@ -78,7 +88,10 @@ spec:
     syncOptions:
       - ServerSideApply=true
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true
 ---
+# csi-driver-nfs 4.12.x is no longer published to the chart repo; source the
+# exact deployed chart from the v4.12.1 git tag instead (charts/v4.12.1/...).
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -89,9 +102,9 @@ metadata:
 spec:
   project: infra
   source:
-    repoURL: https://kubernetes-csi.github.io/csi-driver-nfs
-    chart: csi-driver-nfs
-    targetRevision: 4.12.1
+    repoURL: https://github.com/kubernetes-csi/csi-driver-nfs.git
+    targetRevision: v4.12.1
+    path: charts/v4.12.1/csi-driver-nfs
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system

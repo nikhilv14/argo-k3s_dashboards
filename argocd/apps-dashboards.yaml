@@ -70,9 +70,29 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: kubernetes-dashboard
+  # The dashboard server writes a generated private.key into the csrf Secret,
+  # which changes the checksum/config annotation on the api/auth Deployments.
+  # Ignore both so they don't diff forever (and selfHeal doesn't roll-restart).
+  ignoreDifferences:
+    - group: ""
+      kind: Secret
+      name: kubernetes-dashboard-csrf
+      jsonPointers:
+        - /data
+    - group: apps
+      kind: Deployment
+      name: kubernetes-dashboard-api
+      jqPathExpressions:
+        - .spec.template.metadata.annotations."checksum/config"
+    - group: apps
+      kind: Deployment
+      name: kubernetes-dashboard-auth
+      jqPathExpressions:
+        - .spec.template.metadata.annotations."checksum/config"
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      - RespectIgnoreDifferences=true

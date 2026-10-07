@@ -23,3 +23,11 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  # Child Applications' status subresource changes constantly (their own
+  # sync/health); ignore it so root doesn't flap OutOfSync.
+  ignoreDifferences:
+    - group: argoproj.io
+      kind: Application
+      jsonPointers:
+        - /status
+        - /operation
