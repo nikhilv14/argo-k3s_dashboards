@@ -26,7 +26,7 @@ to the cluster is made through Git — do not `kubectl apply` workloads or
 | Wave | Apps |
 |---|---|
 | 0 | cert-manager, sealed-secrets, metallb, csi-driver-nfs, immich-storage |
-| 1 | longhorn, immich-database |
+| 1 | longhorn, kube-prometheus-stack, immich-database |
 | 2 | ingress-nginx, immich-app |
 | 3 | immich-monitoring |
 | 10 | cloudflared, longhorn-dashboard, kubernetes-dashboard, tandoor |
@@ -34,3 +34,14 @@ to the cluster is made through Git — do not `kubectl apply` workloads or
 ArgoCD itself remains Helm-installed by design (day-0 bootstrap); all other
 infrastructure was adopted from Helm releases into ArgoCD with
 `ServerSideApply=true`. Do not `helm upgrade` the adopted releases.
+
+## Observability
+
+`kube-prometheus-stack` (Prometheus, Grafana, Alertmanager) runs in the
+`monitoring` namespace and scrapes the whole cluster. Grafana is at
+`grafana.home` (internal-ca TLS). Dashboards auto-load from ConfigMaps
+labeled `grafana_dashboard: "1"` in any namespace. Alert rules and service
+monitors live in each workload repo (e.g. `argo-immich-tieredstorage/monitoring`).
+
+Proxmox (PVE) observability is not wired yet: it needs a prometheus-pve-exporter
+deployment plus a PVE API token secret — add it under `infra/` when ready.
