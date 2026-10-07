@@ -23,6 +23,9 @@ prometheus:
           resources:
             requests:
               storage: 20Gi
+    serviceMonitorSelector: {}
+    podMonitorSelector: {}
+    ruleSelector: {}
     serviceMonitorSelectorNilUsesHelmDefaults: false
     podMonitorSelectorNilUsesHelmDefaults: false
     ruleSelectorNilUsesHelmDefaults: false
