@@ -177,3 +177,39 @@ spec:
     syncOptions:
       - ServerSideApply=true
       - CreateNamespace=true
+---
+# Cluster-wide observability: Prometheus + Grafana + Alertmanager.
+# Scrape configs for all ServiceMonitors/PodMonitors (workload repos attach
+# via their own manifests); Grafana dashboards auto-loaded from ConfigMaps
+# labeled grafana_dashboard: "1" in any namespace.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-prometheus-stack
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: infra
+  sources:
+    - repoURL: https://prometheus-community.github.io/helm-charts
+      chart: kube-prometheus-stack
+      targetRevision: 92.1.0
+      helm:
+        valueFiles:
+          - $values/infra/kube-prometheus-stack/values.yaml
+    # ref source doubles as extra-manifests path: Grafana ingress lives here
+    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
+      ref: values
+      path: infra/kube-prometheus-stack/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true

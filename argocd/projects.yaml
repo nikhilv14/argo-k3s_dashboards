@@ -85,6 +85,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: kube-system
       server: https://kubernetes.default.svc
+    - namespace: monitoring
+      server: https://kubernetes.default.svc
   sourceRepos:
     - https://github.com/nikhilv14/argo-k3s_dashboards.git
     - https://charts.longhorn.io
@@ -93,6 +95,7 @@ spec:
     - https://metallb.github.io/metallb
     - oci://registry-1.docker.io/bitnamicharts
     - https://github.com/kubernetes-csi/csi-driver-nfs.git
+    - https://prometheus-community.github.io/helm-charts
   clusterResourceWhitelist:
     - group: "*"
       kind: "*"

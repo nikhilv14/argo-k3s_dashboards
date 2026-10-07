@@ -1,0 +1,78 @@
+# kube-prometheus-stack values (chart pinned in argocd/apps-infra.yaml).
+# Targets the whole cluster (k3s): kubelet/cadvisor, node-exporter,
+# kube-state-metrics, control-plane components.
+
+# Select ALL ServiceMonitors / PodMonitors / PrometheusRules in the cluster
+# instead of only ones labeled for this release, so workload repos
+# (argo-immich-tieredstorage/monitoring, etc.) don't need stack-specific labels.
+prometheus:
+  prometheusSpec:
+    retention: 10d
+    scrapeInterval: 30s
+    resources:
+      requests:
+        cpu: 100m
+        memory: 512Mi
+      limits:
+        memory: 1Gi
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 20Gi
+    serviceMonitorSelectorNilUsesHelmDefaults: false
+    podMonitorSelectorNilUsesHelmDefaults: false
+    ruleSelectorNilUsesHelmDefaults: false
+
+alertmanager:
+  alertmanagerSpec:
+    resources:
+      requests:
+        cpu: 25m
+        memory: 128Mi
+      limits:
+        memory: 256Mi
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: longhorn
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 2Gi
+
+grafana:
+  # Homelab default; rotate it (or set admin.existingSecret) after first login.
+  adminPassword: changeme-rotate-me
+  resources:
+    requests:
+      cpu: 50m
+      memory: 256Mi
+    limits:
+      memory: 512Mi
+  persistence:
+    enabled: true
+    storageClassName: longhorn
+    size: 5Gi
+  sidecar:
+    dashboards:
+      # Picks up ConfigMaps labeled grafana_dashboard: "1" from all namespaces
+      # (e.g. argo-immich-tieredstorage/monitoring).
+      enabled: true
+      searchNamespace: ALL
+  service:
+    type: ClusterIP
+
+# k3s: kube-proxy metrics are not exposed (k3s runs kube-proxy embedded);
+# disable its scrape jobs to avoid permanently-down targets.
+kubeProxy:
+  enabled: false
+# k3s: controller-manager and scheduler run as static pods without metrics
+# endpoints; drop those scrape jobs too.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
