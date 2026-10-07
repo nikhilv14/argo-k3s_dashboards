@@ -15,10 +15,12 @@ loki:
   auth_enabled: false
   storage:
     type: filesystem
-  # TSDB schema v13 (index in local filesystem, retention-safe)
+  # TSDB schema v13 (index in local filesystem, retention-safe).
+  # NOTE: `from` must predate the oldest log lines promtail will replay from
+  # /var/log/pods, otherwise Loki rejects them with "no schema config found".
   schemaConfig:
     configs:
-      - from: "2026-10-07"
+      - from: "2026-10-01"
         store: tsdb
         object_store: filesystem
         schema: v13
