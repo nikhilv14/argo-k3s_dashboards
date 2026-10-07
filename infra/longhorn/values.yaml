@@ -1,0 +1,20 @@
+defaultSettings:
+  defaultDataLocality: best-effort
+  defaultReplicaCount: 1
+longhornDriver:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+longhornManager:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+longhornUI:
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+persistence:
+  defaultClassReplicaCount: 1

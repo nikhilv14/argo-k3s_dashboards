@@ -1,0 +1,94 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: immich
+  namespace: argocd
+spec:
+  description: Immich resilient tiered storage
+  destinations:
+    - namespace: immich
+      server: https://kubernetes.default.svc
+  sourceRepos:
+    - https://github.com/nikhilv14/argo-immich-tieredstorage.git
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: quick-apps
+  namespace: argocd
+spec:
+  description: Quick single-namespace apps
+  destinations:
+    - namespace: tandoor
+      server: https://kubernetes.default.svc
+  sourceRepos:
+    - https://github.com/nikhilv14/argo-quick-apps.git
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: dashboards
+  namespace: argocd
+spec:
+  description: Dashboards and edge access
+  destinations:
+    - namespace: base-apps
+      server: https://kubernetes.default.svc
+    - namespace: longhorn-system
+      server: https://kubernetes.default.svc
+    - namespace: kubernetes-dashboard
+      server: https://kubernetes.default.svc
+  sourceRepos:
+    - https://github.com/nikhilv14/argo-k3s_dashboards.git
+    - https://github.com/kubernetes-retired/dashboard
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: infra
+  namespace: argocd
+spec:
+  description: Cluster infrastructure adopted from Helm (Longhorn, ingress, cert-manager, MetalLB, sealed-secrets, NFS CSI)
+  destinations:
+    - namespace: longhorn-system
+      server: https://kubernetes.default.svc
+    - namespace: ingress-nginx
+      server: https://kubernetes.default.svc
+    - namespace: cert-manager
+      server: https://kubernetes.default.svc
+    - namespace: metallb-system
+      server: https://kubernetes.default.svc
+    - namespace: kube-system
+      server: https://kubernetes.default.svc
+  sourceRepos:
+    - https://github.com/nikhilv14/argo-k3s_dashboards.git
+    - https://charts.longhorn.io
+    - https://kubernetes.github.io/ingress-nginx
+    - https://charts.jetstack.io
+    - https://metallb.github.io/metallb
+    - https://bitnami-labs.github.io/sealed-secrets
+    - https://kubernetes-csi.github.io/csi-driver-nfs
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"

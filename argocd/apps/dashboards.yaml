@@ -1,0 +1,78 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cloudflared
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: dashboards
+  source:
+    repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+    targetRevision: main
+    path: cloudflared
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: base-apps
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn-dashboard
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: dashboards
+  source:
+    repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+    targetRevision: main
+    path: longhorn-dashboard
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubernetes-dashboard
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: dashboards
+  # Source 1: Helm chart (upstream chart repo is dead; repo archived to kubernetes-retired/dashboard)
+  # Source 2: this Git repo for values ($values ref)
+  # Source 3: this Git repo for extra manifests (ingress)
+  sources:
+    - repoURL: https://github.com/kubernetes-retired/dashboard
+      path: charts/kubernetes-dashboard
+      targetRevision: 0ba796d9b85f7070dbd4a5c88354fc79f88763bb
+      helm:
+        valueFiles:
+          - $values/kubernetes-dashboard/values.yaml
+    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
+      ref: values
+    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
+      path: kubernetes-dashboard
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubernetes-dashboard
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
