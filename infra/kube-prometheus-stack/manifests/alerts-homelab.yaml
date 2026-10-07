@@ -40,16 +40,16 @@ spec:
     - name: homelab.storage
       rules:
         - alert: LonghornVolumeDegraded
-          # longhorn_volume_robustness is a gauge: 0=faulted, 1=degraded, 2=healthy.
-          # (There is no `condition` label on this metric.)
-          expr: longhorn_volume_robustness == 1
+          # longhorn_volume_robustness is a gauge per Longhorn 1.10 docs:
+          # 0=unknown, 1=healthy, 2=degraded, 3=faulted.
+          expr: longhorn_volume_robustness == 2
           for: 10m
           labels:
             severity: warning
           annotations:
             summary: "Longhorn volume {{ $labels.volume }} degraded"
         - alert: LonghornVolumeFaulted
-          expr: longhorn_volume_robustness == 0
+          expr: longhorn_volume_robustness == 3
           for: 5m
           labels:
             severity: critical

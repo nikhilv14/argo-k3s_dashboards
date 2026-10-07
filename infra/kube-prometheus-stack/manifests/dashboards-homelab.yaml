@@ -92,7 +92,7 @@ data:
           "gridPos": { "h": 8, "w": 8, "x": 8, "y": 12 },
           "datasource": { "type": "prometheus" },
           "targets": [ { "expr": "longhorn_volume_robustness", "legendFormat": "{{volume}}" } ],
-          "fieldConfig": { "defaults": { "custom": { "mappingType": 2, "valueMappings": [ { "type": "value", "options": { "0": { "text": "faulted", "color": "red" }, "1": { "text": "degraded", "color": "orange" }, "2": { "text": "healthy", "color": "green" } } } ] } } }
+          "fieldConfig": { "defaults": { "custom": { "mappingType": 2, "valueMappings": [ { "type": "value", "options": { "0": { "text": "unknown", "color": "gray" }, "1": { "text": "healthy", "color": "green" }, "2": { "text": "degraded", "color": "orange" }, "3": { "text": "faulted", "color": "red" } } } ] } } }
         },
         {
           "id": 22, "title": "PVE Node Memory", "type": "timeseries",
