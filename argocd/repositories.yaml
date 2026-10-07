@@ -1,0 +1,14 @@
+# OCI chart repositories used by Applications (must be registered for ArgoCD
+# to fetch OCI charts). Anonymous access - no credentials needed.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo-bitnamicharts-oci
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  type: helm
+  name: bitnamicharts
+  url: registry-1.docker.io/bitnamicharts
+  enableOCI: "true"

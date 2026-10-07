@@ -82,13 +82,13 @@ spec:
     - group: apps
       kind: Deployment
       name: kubernetes-dashboard-api
-      jqPathExpressions:
-        - .spec.template.metadata.annotations."checksum/config"
+      jsonPointers:
+        - /spec/template/metadata/annotations/checksum~1config
     - group: apps
       kind: Deployment
       name: kubernetes-dashboard-auth
-      jqPathExpressions:
-        - .spec.template.metadata.annotations."checksum/config"
+      jsonPointers:
+        - /spec/template/metadata/annotations/checksum~1config
   syncPolicy:
     automated:
       prune: true
