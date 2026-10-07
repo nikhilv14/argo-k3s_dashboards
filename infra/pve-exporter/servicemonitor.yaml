@@ -13,7 +13,8 @@ spec:
   endpoints:
     - port: metrics
       interval: 60s
-      path: /metrics
+      # pve-exporter takes the PVE node from the target query parameter
+      path: /pve?target=192.168.12.201&cluster=1&node=1
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -30,7 +31,8 @@ spec:
   endpoints:
     - port: metrics
       interval: 60s
-      path: /metrics
+      # pve-exporter takes the PVE node from the target query parameter
+      path: /pve?target=192.168.12.220&cluster=1&node=1
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -47,4 +49,5 @@ spec:
   endpoints:
     - port: metrics
       interval: 60s
-      path: /metrics
+      # pve-exporter takes the PVE node from the target query parameter
+      path: /pve?target=192.168.12.130&cluster=1&node=1
