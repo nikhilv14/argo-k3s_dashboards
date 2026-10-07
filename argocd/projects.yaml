@@ -96,6 +96,7 @@ spec:
     - oci://registry-1.docker.io/bitnamicharts
     - https://github.com/kubernetes-csi/csi-driver-nfs.git
     - https://prometheus-community.github.io/helm-charts
+    - https://grafana.github.io/helm-charts
   clusterResourceWhitelist:
     - group: "*"
       kind: "*"

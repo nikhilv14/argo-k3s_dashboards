@@ -1,0 +1,217 @@
+# One exporter per PVE node so each node is an independent scrape target:
+# a node outage shows as a down target instead of a silent gap. No VIP/DNS
+# aliasing for the exporter on purpose.
+# Cluster: beast-cluster (pve=192.168.12.201, pve-nuc10=192.168.12.220, pve-hp-g9=192.168.12.130)
+# Auth: nikhil@pve!grafana-config (sealed in sealed-secret.yaml)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pve-exporter-201
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-exporter
+    pve.node: pve
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-exporter
+      pve.node: pve
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pve-exporter
+        pve.node: pve
+    spec:
+      containers:
+        - name: pve-exporter
+          image: ghcr.io/prometheus-pve/prometheus-pve-exporter:3.10.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PVE_HOST
+              value: 192.168.12.201
+            - name: PVE_USER
+              value: nikhil@pve
+            - name: PVE_TOKEN_NAME
+              value: grafana-config
+            - name: PVE_TOKEN_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: pve-exporter
+                  key: PVE_TOKEN_VALUE
+            - name: PVE_VERIFY_SSL
+              value: "false"
+          ports:
+            - name: metrics
+              containerPort: 9221
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pve-exporter-201
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-exporter
+    pve.node: pve
+spec:
+  selector:
+    app.kubernetes.io/name: pve-exporter
+    pve.node: pve
+  ports:
+    - name: metrics
+      port: 9221
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pve-exporter-220
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-exporter
+    pve.node: pve-nuc10
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-exporter
+      pve.node: pve-nuc10
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pve-exporter
+        pve.node: pve-nuc10
+    spec:
+      containers:
+        - name: pve-exporter
+          image: ghcr.io/prometheus-pve/prometheus-pve-exporter:3.10.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PVE_HOST
+              value: 192.168.12.220
+            - name: PVE_USER
+              value: nikhil@pve
+            - name: PVE_TOKEN_NAME
+              value: grafana-config
+            - name: PVE_TOKEN_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: pve-exporter
+                  key: PVE_TOKEN_VALUE
+            - name: PVE_VERIFY_SSL
+              value: "false"
+          ports:
+            - name: metrics
+              containerPort: 9221
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pve-exporter-220
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-exporter
+    pve.node: pve-nuc10
+spec:
+  selector:
+    app.kubernetes.io/name: pve-exporter
+    pve.node: pve-nuc10
+  ports:
+    - name: metrics
+      port: 9221
+      targetPort: metrics
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pve-exporter-130
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-exporter
+    pve.node: pve-hp-g9
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-exporter
+      pve.node: pve-hp-g9
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pve-exporter
+        pve.node: pve-hp-g9
+    spec:
+      containers:
+        - name: pve-exporter
+          image: ghcr.io/prometheus-pve/prometheus-pve-exporter:3.10.1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PVE_HOST
+              value: 192.168.12.130
+            - name: PVE_USER
+              value: nikhil@pve
+            - name: PVE_TOKEN_NAME
+              value: grafana-config
+            - name: PVE_TOKEN_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: pve-exporter
+                  key: PVE_TOKEN_VALUE
+            - name: PVE_VERIFY_SSL
+              value: "false"
+          ports:
+            - name: metrics
+              containerPort: 9221
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: metrics
+            initialDelaySeconds: 5
+            periodSeconds: 30
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pve-exporter-130
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-exporter
+    pve.node: pve-hp-g9
+spec:
+  selector:
+    app.kubernetes.io/name: pve-exporter
+    pve.node: pve-hp-g9
+  ports:
+    - name: metrics
+      port: 9221
+      targetPort: metrics

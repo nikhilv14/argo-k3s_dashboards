@@ -1,0 +1,50 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pve-exporter-201
+  namespace: monitoring
+  labels:
+    pve.node: pve
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-exporter
+      pve.node: pve
+  endpoints:
+    - port: metrics
+      interval: 60s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pve-exporter-220
+  namespace: monitoring
+  labels:
+    pve.node: pve-nuc10
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-exporter
+      pve.node: pve-nuc10
+  endpoints:
+    - port: metrics
+      interval: 60s
+      path: /metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pve-exporter-130
+  namespace: monitoring
+  labels:
+    pve.node: pve-hp-g9
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-exporter
+      pve.node: pve-hp-g9
+  endpoints:
+    - port: metrics
+      interval: 60s
+      path: /metrics

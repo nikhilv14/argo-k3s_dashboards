@@ -7,7 +7,7 @@
 # (argo-immich-tieredstorage/monitoring, etc.) don't need stack-specific labels.
 prometheus:
   prometheusSpec:
-    retention: 10d
+    retention: 30d
     scrapeInterval: 30s
     resources:
       requests:
@@ -65,6 +65,13 @@ grafana:
       searchNamespace: ALL
   service:
     type: ClusterIP
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      uid: loki
+      access: proxy
+      url: http://loki.monitoring.svc.cluster.local:3100
+      isDefault: false
 
 # k3s: kube-proxy metrics are not exposed (k3s runs kube-proxy embedded);
 # disable its scrape jobs to avoid permanently-down targets.

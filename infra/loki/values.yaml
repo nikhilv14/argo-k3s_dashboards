@@ -1,0 +1,67 @@
+# Loki single-binary with filesystem storage on the NAS (nas-rwx).
+# 30-day retention enforced by the compactor.
+deploymentMode: SingleBinary
+
+loki:
+  auth_enabled: false
+  storage:
+    type: filesystem
+  # TSDB schema v13 (index in local filesystem, retention-safe)
+  schemaConfig:
+    configs:
+      - from: "2026-10-07"
+        store: tsdb
+        object_store: filesystem
+        schema: v13
+        index:
+          prefix: index_
+          period: 24h
+  commonConfig:
+    replication_factor: 1
+  limits_config:
+    retention_period: 720h
+    allow_structured_metadata: false
+  compactor:
+    retention_enabled: true
+    delete_request_store: filesystem
+  ingester:
+    chunk_encoding: snappy
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: nas-rwx
+    accessModes:
+      - ReadWriteOnce
+    size: 50Gi
+  resources:
+    requests:
+      cpu: 100m
+      memory: 384Mi
+    limits:
+      memory: 768Mi
+
+gateway:
+  enabled: false
+
+monitoring:
+  serviceMonitor:
+    enabled: true
+    labels: {}
+  selfMonitoring:
+    enabled: false
+    grafanaAgent:
+      installOperator: false
+  dashboards:
+    enabled: false
+  rules:
+    enabled: false
+  lokiCanary:
+    enabled: false
+
+test:
+  enabled: false
+
+lokiCanary:
+  enabled: false

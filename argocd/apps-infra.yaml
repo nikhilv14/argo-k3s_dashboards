@@ -213,3 +213,86 @@ spec:
     syncOptions:
       - ServerSideApply=true
       - CreateNamespace=true
+---
+# Log aggregation: Loki single-binary, filesystem storage on the NAS
+# (nas-rwx), 30-day retention enforced by the compactor.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: loki
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: infra
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: loki
+    targetRevision: 7.3.0
+    helm:
+      valueFiles:
+        - $values/infra/loki/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
+---
+# Log shipping agent: DaemonSet tailing /var/log/pods on every node.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: promtail
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: infra
+  source:
+    repoURL: https://grafana.github.io/helm-charts
+    chart: promtail
+    targetRevision: 6.17.1
+    helm:
+      valueFiles:
+        - $values/infra/promtail/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
+---
+# Proxmox VE metrics: one exporter per PVE node (beast-cluster), each an
+# independent scrape target. Token sealed in infra/pve-exporter/sealed-secret.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pve-exporter
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+    targetRevision: main
+    path: infra/pve-exporter
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
