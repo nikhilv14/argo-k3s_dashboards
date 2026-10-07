@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-notifications-cm
+  namespace: argocd
+data:
+  service.email.email: 'host: smtp.gmail.com
+
+    port: 465
+
+    from: nikhil14aug@gmail.com
+
+    username: $email-username
+
+    password: $email-password
+
+    '
+  template.email: "email:\n  subject: ArgoCD {{.app.metadata.name}} sync={{.app.sync.status}}\
+    \ health={{.app.health.status}}\n  body: |\n    Application: {{.app.metadata.name}}\n\
+    \    Project: {{.app.spec.project}}\n    Sync status: {{.app.sync.status}}\n \
+    \   Health: {{.app.health.status}}\n    Revision: {{.app.status.sync.revision}}\n\
+    \    Details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}\n"
+  trigger.on-health-degraded: "- when: app.status.health.status == 'Degraded'\n  send:\
+    \ [email]\n"
+  subscriptions:
+  - recipients:
+    - email:nikhil14aug@gmail.com
+    triggers:
+    - on-sync-failed
+    - on-health-degraded
+    - on-sync-status-unknown
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: argocd-notifications-secret
+  namespace: argocd
+spec:
+  encryptedData:
+    email-password: AgA98i+/QA04kDcu++J0LhiU9Hijr4dg4lTwNBP55qP26XopkEgqLjtCnvEiKCAaQYgy7UkxjWt5QcJkTFP9IZxes0nqr8fUfQFebF+YhvNvtIaJOhY0ixINIALRVJ2BacgtvTuMSkRVvRkJGxbeO1bYbRH7UAFlmr7KFC1HYEEaPJTOeLHgRGdIg+SrQAKODDJxWuuR/NsWwG0EksCjevr6EohABipRYPBWNX6iUKnHmlzTa4JhklfIZPJ/mP91GXZVRO7c+eoJkGyRHl5imEsfa4ev/IBMony2bHQ5WRiAx0S0ON0dP5RMKS97Pg4/dOF5qZUatpdP+t0hL+RnnfxXidTFjKFKjxEyhYxQEBRW5VJtk8FTXqUrpg8AKr3bxdytaFShIoRztgB3iCIwhKRmbzclHOAYBkPF6FHIf96Kecqd2NT0Y8nrazGGWBTO/zsdpfCVA1Ks7yZHfEqbDEPFDo35PSqZEWqlWgbw1PyrGQ3cERH25CgB5gTPCaDND4XgWzlorTVmA7siichhLLzMYohEeSgUM+sUrepuT6zOC9d8syAvES+ztdWqy0NF6dWQ9hgqvd4hA4uzVpRo9luFPMnPxvtDTYpRFyub7re5hDDCfI6xYiinfRx1Aldb1W4cVmOQNZbpOYR7zGb3z2xXUEJ/io3atc71PiOxLzhR+9slcmJo0gYvIstg9rgAvOcYrKpATihKJ+WiwBFd/1njX3qc
+    email-username: AgBGKc/QWluIqWFr238TUDTsTwsAOklffVOggsK2SBZXv8Q8oNhqvtTWzhlBwckb5zwMkgONZ1z59WGuvMrvcdM4U9SRmw1pGGMczeX2SwH4FPk2ytyupdGzBLM7PtpeRhcgrjUk6hs6YSqgEvFkMWHpQInSwbi9BMYiStUoDBF4Rsyv9pNucFu3oAu1deakD1G/NOCG+RPPHYCpiFBZcvGKrJFkBad4cs1rgBAJX6QEPCv6JnyRFNn7K4ieAW0Fg56W/C24bA4L7U9bC3NDWEVYBLV8tnINGcxoaL38n+Wqaahlh8yBYdagU0nqnvDtBHMc5R1IyTin4bM/zbStKACYehjSZa10Zx/Kea0ifrNk69/sG4NjXkK0kol7JxZLNRkxezWYoerBaCGkkuUpWv1bRXJMVQvy45e80tpjBz16FWDrVutUgX/DsTHxQP/Gmu622EZ50Xv3JTXkSlE9kf8e2ZPj7LeVirYPiOJu1TQF2u1vexwXBu0aKnH9KaOHfrbV0L9n89MlXkLRoLRzz/fI32DCQHL0d/ZW3qAeThy2VPnFhbXh354CuOYHlTHIBMj9cCfPk0216rGoRpL5IfeiOJyD1ZAAQEDpcMNSBepFk1Bhc8OFBxOBc1U+LtE0DBNLxxRrUVwTMutXNDGNGFVxSke5KutHMqjmlOqXnCMjM3ohrLMjDUGSwjsQmSlF1SrjDfOU05PzkmfjjHjloDlLKk1oSwA=
+  template:
+    metadata:
+      name: argocd-notifications-secret
+      namespace: argocd
