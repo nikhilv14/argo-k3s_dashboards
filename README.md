@@ -43,5 +43,15 @@ infrastructure was adopted from Helm releases into ArgoCD with
 labeled `grafana_dashboard: "1"` in any namespace. Alert rules and service
 monitors live in each workload repo (e.g. `argo-immich-tieredstorage/monitoring`).
 
-Proxmox (PVE) observability is not wired yet: it needs a prometheus-pve-exporter
-deployment plus a PVE API token secret — add it under `infra/` when ready.
+- **Proxmox (PVE)**: one prometheus-pve-exporter pod per PVE node
+  (`infra/pve-exporter/`), scraped per-node so outages show as down targets.
+  PVE alerts (node/guest down, storage full, backup coverage) live in
+  `infra/kube-prometheus-stack/manifests/alerts-homelab.yaml`.
+- **Logs**: promtail (DaemonSet) ships `/var/log/pods` and systemd-journald
+  from the k3s nodes into Loki. PVE host logs ship via standalone promtail
+  agents on each PVE node — see `infra/loki/pve-hosts/README.md`.
+- **Alerts email nikhil14aug@gmail.com** via Gmail SMTP (same credentials as
+  the ArgoCD notifications). Routing config lives in the SealedSecret
+  `alertmanager-homelab-config`
+  (`infra/kube-prometheus-stack/manifests/alertmanager-config-sealed.yaml`);
+  the hourly Watchdog is muted. Group wait 30s, repeat every 12h.

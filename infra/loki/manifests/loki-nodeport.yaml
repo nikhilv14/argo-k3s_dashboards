@@ -1,0 +1,21 @@
+# NodePort front door for Proxmox VE hosts (outside the cluster) to push logs
+# into Loki. PVE-host promtail agents (see pve-hosts/) target any k3s node IP
+# on this port; traffic reaches the loki:3100 ClusterIP service.
+apiVersion: v1
+kind: Service
+metadata:
+  name: loki-nodeport
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: loki
+spec:
+  type: NodePort
+  selector:
+    app.kubernetes.io/name: loki
+    app.kubernetes.io/instance: loki
+    app.kubernetes.io/component: single-binary
+  ports:
+    - name: http-metrics
+      port: 3100
+      targetPort: http-metrics
+      nodePort: 30100

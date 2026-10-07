@@ -1,0 +1,55 @@
+# Promtail config for the Proxmox VE hosts (beast-cluster: pve, pve-nuc10,
+# pve-hp-g9). Ships journald (pve services, kernel, sshd) and PVE task/daemon
+# log files into the same Loki instance the k3s logs live in.
+#
+# Pushes through the loki-nodeport NodePort (30100) on any k3s node; see
+# infra/loki/manifests/loki-nodeport.yaml and pve-hosts/README.md.
+server:
+  http_listen_port: 3101
+
+clients:
+  # Load-balanced over the three k3s nodes via NodePort 30100.
+  - url: http://192.168.12.51:30100/loki/api/v1/push
+
+positions:
+  filename: /var/lib/promtail/positions.yaml
+
+scrape_configs:
+  # systemd journal: pveproxy, pvedaemon, pvestatd, pve-cluster, kernel, sshd...
+  - job_name: journal
+    journal:
+      max_age: 24h
+      labels:
+        job: systemd-journal
+        cluster: beast-cluster
+    relabel_configs:
+      - source_labels: ['__journal__hostname']
+        target_label: host
+      - source_labels: ['__journal__systemd_unit']
+        target_label: unit
+      - source_labels: ['__journal_syslogtag']
+        target_label: syslog_identifier
+      - source_labels: ['__journal_priority_keyword']
+        target_label: level
+
+  # PVE task history (vzdump, qm, pct, ...) — per-task .log files under the
+  # node-specific directory.
+  - job_name: pve-tasks
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: pve-tasks
+          cluster: beast-cluster
+          host: ${HOSTNAME}
+          __path__: /var/log/pve/tasks/*/*/*.log
+
+  # /var/log/syslog rotation chain (journald does not capture everything,
+  # e.g. rsyslog-routed messages).
+  - job_name: syslog
+    static_configs:
+      - targets: [localhost]
+        labels:
+          job: syslog
+          cluster: beast-cluster
+          host: ${HOSTNAME}
+          __path__: /var/log/syslog*

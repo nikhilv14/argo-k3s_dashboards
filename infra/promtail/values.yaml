@@ -1,7 +1,46 @@
-# Promtail DaemonSet: ships all container logs from /var/log/pods to Loki.
+# Promtail DaemonSet: ships all container logs from /var/log/pods to Loki,
+# plus systemd-journald (k3s service logs, kernel, sshd) from the k3s nodes.
 config:
   clients:
     - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+  snippets:
+    # k3s system logs: journald (k3s.service, kernel, sshd, containerd).
+    # Requires the journal hostPath volumes below.
+    extraScrapeConfigs: |
+      - job_name: journal
+        journal:
+          # Stay inside Loki's reject_old_samples_max_age (24h); entries older
+          # than that get a 400 "entry too far behind" and are dropped anyway.
+          max_age: 12h
+          labels:
+            job: systemd-journal
+        relabel_configs:
+          - source_labels: ['__journal__hostname']
+            target_label: node_name
+          - source_labels: ['__journal__systemd_unit']
+            target_label: unit
+          - source_labels: ['__journal_syslogtag']
+            target_label: syslog_identifier
+          - source_labels: ['__journal_priority_keyword']
+            target_label: level
+
+# Mount journald files (persistent and volatile) for the journal scrape job.
+extraVolumes:
+  - name: journal
+    hostPath:
+      path: /var/log/journal
+      type: DirectoryOrCreate
+  - name: run-journal
+    hostPath:
+      path: /run/log/journal
+      type: DirectoryOrCreate
+extraVolumeMounts:
+  - name: journal
+    mountPath: /var/log/journal
+    readOnly: true
+  - name: run-journal
+    mountPath: /run/log/journal
+    readOnly: true
 
 resources:
   requests:

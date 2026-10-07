@@ -43,6 +43,14 @@ alertmanager:
           resources:
             requests:
               storage: 2Gi
+    # Full alertmanager config (email routing to nikhil14aug@gmail.com via
+    # Gmail SMTP, same credentials as ArgoCD notifications) lives in the
+    # SealedSecret alertmanager-homelab-config
+    # (infra/kube-prometheus-stack/manifests/alertmanager-config-sealed.yaml).
+    # The chart's default `alertmanager.config`/`templateFiles` are ignored
+    # when useExistingSecret is true.
+    useExistingSecret: true
+    configSecret: alertmanager-homelab-config
 
 grafana:
   # Admin credentials live in the SealedSecret argocd-sealed grafana-admin

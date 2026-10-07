@@ -40,14 +40,16 @@ spec:
     - name: homelab.storage
       rules:
         - alert: LonghornVolumeDegraded
-          expr: longhorn_volume_robustness{condition="degraded"} == 1
+          # longhorn_volume_robustness is a gauge: 0=faulted, 1=degraded, 2=healthy.
+          # (There is no `condition` label on this metric.)
+          expr: longhorn_volume_robustness == 1
           for: 10m
           labels:
             severity: warning
           annotations:
             summary: "Longhorn volume {{ $labels.volume }} degraded"
         - alert: LonghornVolumeFaulted
-          expr: longhorn_volume_robustness{condition="faulted"} == 1
+          expr: longhorn_volume_robustness == 0
           for: 5m
           labels:
             severity: critical
@@ -78,6 +80,43 @@ spec:
             summary: "Certificate {{ $labels.certificate_name }} expires within 14 days"
     - name: homelab.observability
       rules:
+        # ---------- monitoring stack self-monitoring ----------
+        - alert: PrometheusDown
+          expr: up{job="kube-prometheus-stack-prometheus"} == 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Prometheus target {{ $labels.job }} down"
+        - alert: AlertmanagerDown
+          expr: up{job="kube-prometheus-stack-alertmanager"} == 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Alertmanager target {{ $labels.job }} down"
+        - alert: GrafanaDown
+          expr: up{job="kube-prometheus-stack-grafana"} == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Grafana target {{ $labels.job }} down"
+        - alert: LokiDown
+          expr: up{job=~".*loki.*"} == 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Loki target {{ $labels.job }} down"
+        - alert: PromtailDown
+          expr: up{job=~".*promtail.*"} == 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Promtail target {{ $labels.job }} down"
+            description: "Log shipping from {{ $labels.instance }} may be stalled."
         - alert: PVEExporterDown
           expr: up{job=~"pve-exporter-(201|220|130)"} == 0
           for: 10m
@@ -100,6 +139,38 @@ spec:
             severity: warning
           annotations:
             summary: "Proxmox node {{ $labels.id }} rebooted"
+        - alert: PVEGuestDown
+          expr: pve_up{id=~"qemu/.*|lxc/.*"} == 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Proxmox guest {{ $labels.id }} is down"
+            description: "VM/LXC {{ $labels.id }} reports down for 10 minutes."
+        - alert: PVEStorageAlmostFull
+          expr: |
+            pve_disk_usage_bytes{id=~"storage/.*"} / pve_disk_size_bytes{id=~"storage/.*"} > 0.90
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVE storage {{ $labels.id }} >90% full"
+        - alert: PVENodeMemoryHigh
+          expr: |
+            pve_memory_usage_bytes{id=~"node/.*"} / pve_memory_size_bytes{id=~"node/.*"} > 0.90
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Proxmox node {{ $labels.id }} memory >90% used"
+        - alert: PVENotBackedUpGuests
+          expr: max(pve_not_backed_up_total) > 0
+          for: 0m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $value }} Proxmox guests have no backup job coverage"
+            description: "pve_not_backed_up_total reports guests not matched by any vzdump schedule."
         - alert: LogIngestStalled
           expr: sum(increase(loki_distributor_lines_received_total[15m])) == 0
           for: 15m

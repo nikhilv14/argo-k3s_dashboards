@@ -1,0 +1,17 @@
+[Unit]
+Description=Promtail log shipper (PVE host -> k3s Loki)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=root
+ExecStart=/usr/local/bin/promtail -config.file=/etc/promtail/promtail.yaml
+Restart=always
+RestartSec=5
+# Fine to hand journald and /var/log/pve to promtail; limit damage if Loki
+# pushes get big by capping memory.
+MemoryMax=192M
+NoNewPrivileges=false
+
+[Install]
+WantedBy=multi-user.target
