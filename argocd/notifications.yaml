@@ -15,20 +15,18 @@ data:
     password: $email-password
 
     '
-  template.email: "email:\n  subject: ArgoCD {{.app.metadata.name}} sync={{.app.sync.status}}\
-    \ health={{.app.health.status}}\n  body: |\n    Application: {{.app.metadata.name}}\n\
-    \    Project: {{.app.spec.project}}\n    Sync status: {{.app.sync.status}}\n \
-    \   Health: {{.app.health.status}}\n    Revision: {{.app.status.sync.revision}}\n\
+  template.email: "email:\n  subject: 'ArgoCD {{.app.metadata.name}} sync={{.app.status.sync.status}}\
+    \ health={{.app.status.health.status}}'\n  body: |\n    Application: {{.app.metadata.name}}\n\
+    \    Project: {{.app.spec.project}}\n    Sync status: {{.app.status.sync.status}}\n\
+    \    Health: {{.app.status.health.status}}\n    Revision: {{.app.status.sync.revision}}\n\
     \    Details: {{.context.argocdUrl}}/applications/{{.app.metadata.name}}\n"
   trigger.on-health-degraded: "- when: app.status.health.status == 'Degraded'\n  send:\
     \ [email]\n"
-  subscriptions:
-  - recipients:
-    - email:nikhil14aug@gmail.com
-    triggers:
-    - on-sync-failed
-    - on-health-degraded
-    - on-sync-status-unknown
+  subscriptions: "- recipients:\n  - email:nikhil14aug@gmail.com\n  triggers:\n  -\
+    \ on-sync-failed\n  - on-health-degraded\n  - on-sync-status-unknown\n"
+  trigger.on-sync-failed: "- when: app.status.sync.status == 'Error'\n  send: [email]\n"
+  trigger.on-sync-status-unknown: "- when: app.status.sync.status == 'Unknown'\n \
+    \ send: [email]\n"
 ---
 apiVersion: bitnami.com/v1alpha1
 kind: SealedSecret
