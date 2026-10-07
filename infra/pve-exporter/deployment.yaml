@@ -33,7 +33,7 @@ spec:
             - name: PVE_USER
               value: nikhil@pve
             - name: PVE_TOKEN_NAME
-              value: grafana-config
+              value: grafana
             - name: PVE_TOKEN_VALUE
               valueFrom:
                 secretKeyRef:
@@ -104,7 +104,7 @@ spec:
             - name: PVE_USER
               value: nikhil@pve
             - name: PVE_TOKEN_NAME
-              value: grafana-config
+              value: grafana
             - name: PVE_TOKEN_VALUE
               valueFrom:
                 secretKeyRef:
@@ -175,7 +175,7 @@ spec:
             - name: PVE_USER
               value: nikhil@pve
             - name: PVE_TOKEN_NAME
-              value: grafana-config
+              value: grafana
             - name: PVE_TOKEN_VALUE
               valueFrom:
                 secretKeyRef:
