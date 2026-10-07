@@ -2,6 +2,15 @@
 # 30-day retention enforced by the compactor.
 deploymentMode: SingleBinary
 
+# Chart 7.x ships read/write/backend targets by default; zero them out since
+# we run the single-binary mode.
+read:
+  replicas: 0
+write:
+  replicas: 0
+backend:
+  replicas: 0
+
 loki:
   auth_enabled: false
   storage:
