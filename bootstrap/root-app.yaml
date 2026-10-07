@@ -23,6 +23,10 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # App-of-apps updating pre-existing Application objects fails with
+      # "resourceVersion must be specified for an update" under client-side
+      # apply; SSA handles the ownership handover correctly.
+      - ServerSideApply=true
   # Child Applications' status subresource changes constantly (their own
   # sync/health); ignore it so root doesn't flap OutOfSync.
   ignoreDifferences:

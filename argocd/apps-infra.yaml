@@ -44,9 +44,12 @@ spec:
   source:
 # sealed-secrets chart 2.18.0 has been pruned from the Bitnami chart repo and
 # OCI registry; pin to the latest available Bitnami OCI chart (2.20.0).
-    repoURL: oci://registry-1.docker.io/bitnamicharts
-    chart: sealed-secrets
-    targetRevision: 2.20.0
+# sealed-secrets chart 2.18.0 was pruned from the Bitnami chart repo and its
+# OCI registry (Docker Hub anonymous OCI access also fails from this cluster).
+# The 2.20.0 chart is vendored in-repo at infra/sealed-secrets/sealed-secrets/.
+    repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+    targetRevision: main
+    path: infra/sealed-secrets/sealed-secrets
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
