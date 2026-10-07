@@ -225,13 +225,16 @@ metadata:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   project: infra
-  source:
-    repoURL: https://grafana.github.io/helm-charts
-    chart: loki
-    targetRevision: 7.3.0
-    helm:
-      valueFiles:
-        - $values/infra/loki/values.yaml
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: loki
+      targetRevision: 7.3.0
+      helm:
+        valueFiles:
+          - $values/infra/loki/values.yaml
+    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
@@ -253,13 +256,16 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   project: infra
-  source:
-    repoURL: https://grafana.github.io/helm-charts
-    chart: promtail
-    targetRevision: 6.17.1
-    helm:
-      valueFiles:
-        - $values/infra/promtail/values.yaml
+  sources:
+    - repoURL: https://grafana.github.io/helm-charts
+      chart: promtail
+      targetRevision: 6.17.1
+      helm:
+        valueFiles:
+          - $values/infra/promtail/values.yaml
+    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
+      ref: values
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
