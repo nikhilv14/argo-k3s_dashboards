@@ -95,8 +95,10 @@ class NodeCollector(threading.Thread):
         print(f"[{self.node}] {msg}", flush=True)
 
     def collect_journal(self):
-        since = max(self.since_us, int(time.time() * 1e6) - MAX_LAG_US)
-        entries = http_json(self.host, f"/api2/json/nodes/{self.node}/journal?since={since}") or []
+        # PVE's journal API takes `since` in epoch SECONDS; we track micro-
+        # precision internally via the cursor t= field and convert on request.
+        since_s = max(self.since_us // 1_000_000 - 1, int(time.time()) - MAX_LAG_US // 1_000_000)
+        entries = http_json(self.host, f"/api2/json/nodes/{self.node}/journal?since={since_s}") or []
         # alternating [cursor, line, cursor, line, ...]
         pairs = [(entries[i], entries[i + 1]) for i in range(0, len(entries) - 1, 2)]
         batch = {}
