@@ -172,7 +172,11 @@ class NodeCollector(threading.Thread):
             except Exception as e:
                 self.log(f"task log fetch failed {upid}: {e!r}")
                 continue
-            # loglines is [[n, text], ...]
+            # log endpoint wraps: {total, data: [{'t': text, 'n': lineno}, ...]}
+            if isinstance(loglines, dict) and "data" in loglines:
+                loglines = loglines["data"]
+            if not isinstance(loglines, list):
+                continue
             endtime = t.get("endtime") or t.get("starttime") or int(time.time())
             ts_ns = int(endtime) * 1_000_000_000
             tags = {
@@ -182,7 +186,7 @@ class NodeCollector(threading.Thread):
                 "task_type": t.get("type", "unknown"),
                 "user": (t.get("user") or "unknown").replace("@", "_"),
             }
-            vals = [(ts_ns, ln[1]) for ln in loglines if len(ln) > 1]
+            vals = [(ts_ns, ln.get("t", "") if isinstance(ln, dict) else ln[1]) for ln in loglines if (isinstance(ln, dict) and ln.get("t") is not None) or (isinstance(ln, list) and len(ln) > 1)]
             if vals:
                 batch.setdefault(tuple(sorted(tags.items())), []).extend(vals)
         if batch:
