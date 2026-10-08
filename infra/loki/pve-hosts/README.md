@@ -1,5 +1,13 @@
 # Promtail on the Proxmox VE hosts
 
+> **Note:** the k3s cluster now ships PVE logs natively via the
+> `pve-journal-collector` app (`infra/pve-journal-collector/`), which polls
+> each node's systemd journal and finished task logs over the PVE API
+> (labels: `job="pve-journal"`, `job="pve-tasks"`). No SSH or host install is
+> needed for those. The standalone promtail agents below are an optional
+> alternative/extension (e.g. for /var/log/syslog files or if you want
+> kernel-level streaming between API polls).
+
 The k3s logs reach Loki through promtail inside the cluster, but the PVE
 hosts (pve, pve-nuc10, pve-hp-g9) are outside it. This directory contains a
 small standalone promtail deployment for those hosts: journald (pveproxy,

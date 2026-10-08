@@ -277,6 +277,33 @@ spec:
       - ServerSideApply=true
       - CreateNamespace=true
 ---
+# Proxmox VE logs: polls each PVE node's systemd journal and finished task
+# logs over the PVE API and pushes them into Loki. Reuses the pve-exporter
+# token secret (pve-exporter), so it must sync after the pve-exporter app.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pve-journal-collector
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+    targetRevision: main
+    path: infra/pve-journal-collector
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
+---
 # Proxmox VE metrics: one exporter per PVE node (beast-cluster), each an
 # independent scrape target. Token sealed in infra/pve-exporter/sealed-secret.yaml.
 apiVersion: argoproj.io/v1alpha1

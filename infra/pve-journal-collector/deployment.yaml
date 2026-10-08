@@ -1,0 +1,81 @@
+# API-based PVE log collector: polls each PVE node's journal and finished
+# task logs over the Proxmox API (no SSH to the hosts needed) and pushes
+# them into Loki. Reuses the pve-exporter API token secret; see
+# infra/pve-exporter/ for the token source.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pve-journal-collector-env
+  namespace: monitoring
+data:
+  PVE_NODES: "pve,pve-nuc10,pve-hp-g9"
+  PVE_PORT: "8006"
+  LOKI_URL: "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+  PVE_USER: "nikhil@pve"
+  PVE_TOKEN_NAME: "grafana"
+  PVE_CLUSTER: "beast-cluster"
+  POLL_SECS: "10"
+  TASK_POLL_SECS: "60"
+  START_BACK_SECS: "600"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pve-journal-collector
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-journal-collector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-journal-collector
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pve-journal-collector
+    spec:
+      containers:
+        - name: collector
+          image: python:3.12-alpine
+          command: ["python3", "-u", "/opt/collector.py"]
+          envFrom:
+            - configMapRef:
+                name: pve-journal-collector-env
+          env:
+            - name: PVE_TOKEN_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: pve-exporter
+                  key: PVE_TOKEN_VALUE
+          volumeMounts:
+            - name: script
+              mountPath: /opt
+          ports:
+            - name: metrics
+              containerPort: 9300
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 128Mi
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: metrics
+            initialDelaySeconds: 15
+            periodSeconds: 60
+      volumes:
+        - name: script
+          configMap:
+            name: pve-journal-collector-script
+---
+# Rendered collector.py (kept in sync with infra/pve-journal-collector/collector.py)
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pve-journal-collector-script
+  namespace: monitoring
+data:
+  collector.py: "__PLACEHOLDER__"
