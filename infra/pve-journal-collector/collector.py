@@ -43,10 +43,21 @@ JOURNAL_LINE = re.compile(
 )
 
 
-def http_json(node, path, timeout=10):
-    url = f"https://{node}:{PORT}{path}"
+def http_json(node_host, path, timeout=10):
+    url = f"https://{node_host}:{PORT}{path}"
     req = urllib.request.Request(url, headers={"Authorization": AUTH, "Accept": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
+    # PVE nodes use self-signed / internal-CA certs (pve-exporter sets
+    # PVE_VERIFY_SSL=false for the same reason).
+    if os.environ.get("PVE_VERIFY_SSL", "true").lower() == "false":
+        import ssl
+        ctx = ssl.create_default_context()
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
+        opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ctx))
+        resp = opener.open(req, timeout=timeout)
+    else:
+        resp = urllib.request.urlopen(req, timeout=timeout)
+    with resp:
         # PVE may return gzip regardless of Accept-Encoding.
         data = resp.read()
         if resp.headers.get("Content-Encoding") == "gzip" or data[:2] == b"\x1f\x8b":
@@ -70,9 +81,10 @@ def push_to_loki(streams):
 
 
 class NodeCollector(threading.Thread):
-    def __init__(self, node):
+    def __init__(self, node, host):
         super().__init__(daemon=True, name=f"col-{node}")
         self.node = node
+        self.host = host
         self.since_us = int((time.time() - START_BACK) * 1_000_000)
         self.seen_cursors = set()
         self.tasks_seen = set()  # UPIDs already pushed
@@ -84,7 +96,7 @@ class NodeCollector(threading.Thread):
 
     def collect_journal(self):
         since = max(self.since_us, int(time.time() * 1e6) - MAX_LAG_US)
-        entries = http_json(self.node, f"/api2/json/nodes/{self.node}/journal?since={since}") or []
+        entries = http_json(self.host, f"/api2/json/nodes/{self.node}/journal?since={since}") or []
         # alternating [cursor, line, cursor, line, ...]
         pairs = [(entries[i], entries[i + 1]) for i in range(0, len(entries) - 1, 2)]
         batch = {}
@@ -117,7 +129,7 @@ class NodeCollector(threading.Thread):
                     self.out.setdefault(dict(labels), []).extend(vals)
 
     def collect_tasks(self):
-        tasks = http_json(self.node, f"/api2/json/nodes/{self.node}/tasks?limit=50") or []
+        tasks = http_json(self.host, f"/api2/json/nodes/{self.node}/tasks?limit=50") or []
         batch = {}
         for t in tasks:
             upid = t.get("upid")
@@ -131,7 +143,7 @@ class NodeCollector(threading.Thread):
             if len(self.tasks_seen) > 2000:
                 self.tasks_seen = set(list(self.tasks_seen)[-500:])
             try:
-                loglines = http_json(self.node, f"/api2/json/nodes/{self.node}/tasks/{urllib.parse.quote(upid, safe='')}/log?limit=500")
+                loglines = http_json(self.host, f"/api2/json/nodes/{self.node}/tasks/{urllib.parse.quote(upid, safe='')}/log?limit=500")
             except Exception as e:
                 self.log(f"task log fetch failed {upid}: {e}")
                 continue
@@ -184,6 +196,14 @@ def serve_health(port):
 
 
 def main():
+    # PVE_NODES entries are "name=host" or plain "name"; name is the PVE
+    # node name used as the Loki `host` label, host is the address to poll
+    # (the API of ANY node works for the whole cluster, but we poll each
+    # node directly so an outage shows as missing data for that node only).
+    node_map = []
+    for entry in NODES:
+        name, _, host = entry.partition("=")
+        node_map.append((name, host or name))
     def pusher():
         while True:
             time.sleep(5)
@@ -206,7 +226,7 @@ def main():
                             for labels, vals in batch.items():
                                 c.out.setdefault(labels, []).extend(vals)
 
-    collectors = [NodeCollector(n) for n in NODES]
+    collectors = [NodeCollector(n, h) for n, h in node_map]
     threading.Thread(target=pusher, daemon=True).start()
     threading.Thread(target=serve_health, args=(int(os.environ.get("HEALTH_PORT", "9300")),), daemon=True).start()
     for c in collectors:
