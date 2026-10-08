@@ -31,6 +31,8 @@ spec:
     metadata:
       labels:
         app.kubernetes.io/name: pve-journal-collector
+      annotations:
+        checksum/script: a6e029deff6d4d9d61787b1b45e4d3265140db21a5fb3665f1dbf12f721cdb2f
     spec:
       containers:
       - name: collector
