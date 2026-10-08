@@ -66,8 +66,13 @@ def http_json(node_host, path, timeout=10):
 
 
 def push_to_loki(streams):
-    """streams: {labels_dict: [(ts_ns, line), ...]}"""
-    payload = {"streams": [{"stream": labels, "values": vals} for labels, vals in streams.items()]}
+    """streams: {labels: [(ts_ns, line), ...]} where labels is a dict OR a
+    tuple of (key, value) pairs (hashable, safe for intermediate staging)."""
+    payload = {"streams": [
+        {"stream": dict(labels) if isinstance(labels, tuple) else labels,
+         "values": [[str(int(ts)), line] for ts, line in vals]}
+        for labels, vals in streams.items()
+    ]}
     body = json.dumps(payload).encode()
     req = urllib.request.Request(
         LOKI_URL,
@@ -245,7 +250,7 @@ def main():
                     c.out.clear()
             if batch:
                 try:
-                    push_to_loki({dict(labels): vals for labels, vals in batch.items()})
+                    push_to_loki(batch)
                     print(f"[pusher] sent {sum(len(v) for v in batch.values())} lines", flush=True)
                 except Exception as e:
                     print(f"[pusher] push failed: {e}", flush=True)
