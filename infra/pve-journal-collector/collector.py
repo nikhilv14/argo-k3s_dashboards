@@ -99,32 +99,55 @@ class NodeCollector(threading.Thread):
         # precision internally via the cursor t= field and convert on request.
         since_s = max(self.since_us // 1_000_000 - 1, int(time.time()) - MAX_LAG_US // 1_000_000)
         entries = http_json(self.host, f"/api2/json/nodes/{self.node}/journal?since={since_s}") or []
-        # alternating [cursor, line, cursor, line, ...]
-        pairs = [(entries[i], entries[i + 1]) for i in range(0, len(entries) - 1, 2)]
+        # PVE returns either alternating [cursor, line] strings, or dict
+        # entries with cursor/msg fields. Parse defensively.
         batch = {}
         newest_us = None
-        for cursor, line in pairs:
-            if cursor in self.seen_cursors:
-                continue
-            m = re.search(r"[;^]t=([0-9a-f]+)", cursor)
-            if not m:
-                continue
-            ts_us = int(m.group(1), 16)
-            if ts_us < self.since_us:
-                continue
-            self.seen_cursors.add(cursor)
-            if len(self.seen_cursors) > 5000:
-                self.seen_cursors = set(list(self.seen_cursors)[-2000:])
-            newest_us = ts_us if newest_us is None else max(newest_us, ts_us)
 
+        def add_entry(cursor, line, ts_us=None):
+            if not cursor or ts_us is None:
+                if cursor:
+                    m2 = re.search(r"[;^]t=([0-9a-f]+)", cursor)
+                    if m2:
+                        ts_us = int(m2.group(1), 16)
+            if not cursor or ts_us is None:
+                return
+            if cursor in self.seen_cursors or ts_us < self.since_us:
+                return
+            self.seen_cursors.add(cursor)
+            nonlocal newest_us
+            newest_us = ts_us if newest_us is None else max(newest_us, ts_us)
             tags = {"job": "pve-journal", "host": self.node, "cluster": CLUSTER}
             lm = JOURNAL_LINE.match(line)
             if lm:
                 tags["unit"] = lm.group("tag")
                 line = lm.group("msg")
             batch.setdefault(tuple(sorted(tags.items())), []).append((ts_us * 1000, line))
+
+        idx = 0
+        while idx < len(entries):
+            item = entries[idx]
+            if isinstance(item, dict):
+                ts_us = item.get("epoch") or item.get("t")
+                if isinstance(ts_us, str):
+                    try:
+                        ts_us = int(float(ts_us) * 1e6)
+                    except ValueError:
+                        ts_us = None
+                elif ts_us is not None:
+                    # epoch seconds or epoch us
+                    ts_us = int(ts_us * (1_000_000 if ts_us < 1e11 else 1))
+                add_entry(item.get("cursor"), item.get("msg", ""), ts_us)
+                idx += 1
+            elif isinstance(item, str) and idx + 1 < len(entries) and isinstance(entries[idx + 1], str):
+                add_entry(item, entries[idx + 1])
+                idx += 2
+            else:
+                idx += 1
         if newest_us is not None:
             self.since_us = max(self.since_us, newest_us)  # strictly forward
+        if len(self.seen_cursors) > 5000:
+            self.seen_cursors = set(list(self.seen_cursors)[-2000:])
         if batch:
             with self.lock:
                 for labels, vals in batch.items():
@@ -147,7 +170,7 @@ class NodeCollector(threading.Thread):
             try:
                 loglines = http_json(self.host, f"/api2/json/nodes/{self.node}/tasks/{urllib.parse.quote(upid, safe='')}/log?limit=500")
             except Exception as e:
-                self.log(f"task log fetch failed {upid}: {e}")
+                self.log(f"task log fetch failed {upid}: {e!r}")
                 continue
             # loglines is [[n, text], ...]
             endtime = t.get("endtime") or t.get("starttime") or int(time.time())
@@ -180,7 +203,7 @@ class NodeCollector(threading.Thread):
                 try:
                     self.collect_tasks()
                 except Exception as e:
-                    self.log(f"tasks poll failed: {e}")
+                    self.log(f"tasks poll failed: {e!r}")
             time.sleep(POLL_SECS)
 
 
