@@ -151,7 +151,7 @@ class NodeCollector(threading.Thread):
         if batch:
             with self.lock:
                 for labels, vals in batch.items():
-                    self.out.setdefault(dict(labels), []).extend(vals)
+                    self.out.setdefault(labels, []).extend(vals)
 
     def collect_tasks(self):
         tasks = http_json(self.host, f"/api2/json/nodes/{self.node}/tasks?limit=50") or []
@@ -192,7 +192,7 @@ class NodeCollector(threading.Thread):
         if batch:
             with self.lock:
                 for labels, vals in batch.items():
-                    self.out.setdefault(dict(labels), []).extend(vals)
+                    self.out.setdefault(labels, []).extend(vals)
 
     def run(self):
         task_polls = 0
@@ -245,7 +245,7 @@ def main():
                     c.out.clear()
             if batch:
                 try:
-                    push_to_loki(batch)
+                    push_to_loki({dict(labels): vals for labels, vals in batch.items()})
                     print(f"[pusher] sent {sum(len(v) for v in batch.values())} lines", flush=True)
                 except Exception as e:
                     print(f"[pusher] push failed: {e}", flush=True)
