@@ -51,6 +51,13 @@ metadata:
     argocd.argoproj.io/sync-wave: "2"
 spec:
   project: immich
+  # HPA owns ML replica count; without this Argo selfHeal fights the autoscaler
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      name: immich-machine-learning
+      jsonPointers:
+        - /spec/replicas
   source:
     repoURL: https://github.com/nikhilv14/argo-immich-tieredstorage.git
     targetRevision: main
