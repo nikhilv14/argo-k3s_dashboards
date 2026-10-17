@@ -1,12 +1,29 @@
 defaultSettings:
   defaultDataLocality: best-effort
   defaultReplicaCount: 1
-longhornDriver:
+# k3s-worker-z690 is a privileged LXC container sharing the PVE host kernel.
+# The kernel iSCSI netlink listener (scsi_transport_iscsi) only exists in
+# init_net, so iscsid inside the container cannot create sessions
+# (ECONNREFUSED) and Longhorn engines/share-managers crash-loop when placed
+# there. Owner election for Longhorn controllers is a hash over all nodes
+# running longhorn-manager, so ~1/N of all volumes would permanently break
+# when they hash onto the LXC.
+#
+# Fix: longhorn system components (manager + CSI driver) only run on nodes
+# labelled longhorn-system=true (the 3 servers). The LXC drops out of the
+# owner-election ring entirely. The k8s node k3s-worker-z690 carries a
+# NoSchedule taint so pods using Longhorn PVCs never land there; stateless
+# apps (GPU ML, exporters, dashboards) opt in via tolerations.
+longhornManager:
+  nodeSelector:
+    longhorn-system: "true"
   resources:
     limits:
       cpu: 500m
       memory: 512Mi
-longhornManager:
+longhornDriver:
+  nodeSelector:
+    longhorn-system: "true"
   resources:
     limits:
       cpu: 500m
