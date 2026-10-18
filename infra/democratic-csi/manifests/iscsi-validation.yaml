@@ -1,7 +1,8 @@
 # Phase 5 validation: TrueNAS iSCSI pipeline test.
 # PVC provisioned by democratic-csi (truenas-iscsi SC), pod pinned to
-# k3s-worker-z690 (primary validation node — z690 LXC cannot host iSCSI sessions) to prove kernel iSCSI sessions work there
-# — the scenario Longhorn's embedded iscsid failed on.
+# k3s-node1: z690 (privileged LXC) cannot host kernel iSCSI sessions —
+# its iscsid crashes with 'sendmsg: bug? ctrl_fd 5' on session login
+# (the exact scenario that broke Longhorn's engine attachments there).
 #
 # Apply:  kubectl apply -f manifests/iscsi-validation.yaml
 # Watch:  kubectl -n democratic-csi get pvc,pod -l app=iscsi-validation -w

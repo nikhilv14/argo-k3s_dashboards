@@ -301,7 +301,8 @@ spec:
 # TrueNAS iSCSI CSI driver (democratic-csi). Provisioner for the
 # truenas-iscsi StorageClass (default). API key sealed in
 # infra/democratic-csi/manifests/sealed-secret.yaml; validation pod
-# (pinned to k3s-worker-z690) lives in the same manifests dir.
+# (pinned to k3s-node1 — z690 LXC cannot host iSCSI sessions) lives in
+# the same manifests dir.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
