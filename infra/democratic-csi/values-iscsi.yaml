@@ -11,7 +11,9 @@ driver:
     driver: freenas-api-iscsi
 
 node:
-  kubeletHostPath: /var/lib/rancher/k3s/agent/kubelet
+  # k3s kubelet on this cluster uses the standard path (confirmed via
+  # kubelet CSI plugin registration logs on k3s-worker-z690).
+  kubeletHostPath: /var/lib/kubelet
 
 storageClasses:
   - name: truenas-iscsi
