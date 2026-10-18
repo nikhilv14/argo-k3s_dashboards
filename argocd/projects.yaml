@@ -87,6 +87,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: monitoring
       server: https://kubernetes.default.svc
+    - namespace: democratic-csi
+      server: https://kubernetes.default.svc
   sourceRepos:
     - https://github.com/nikhilv14/argo-k3s_dashboards.git
     - https://charts.longhorn.io
@@ -97,6 +99,7 @@ spec:
     - https://github.com/kubernetes-csi/csi-driver-nfs.git
     - https://prometheus-community.github.io/helm-charts
     - https://grafana.github.io/helm-charts
+    - https://democratic-csi.github.io/charts/
   clusterResourceWhitelist:
     - group: "*"
       kind: "*"
