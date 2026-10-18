@@ -1,0 +1,68 @@
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: iscsi-validation
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: iscsi-validation-pvc
+  namespace: iscsi-validation
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: truenas-iscsi
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: iscsi-validation
+  namespace: iscsi-validation
+  labels:
+    app: iscsi-validation
+spec:
+  # Pin to the LXC worker: this pod exists to prove TrueNAS iSCSI works there.
+  nodeName: k3s-worker-z690
+  containers:
+    - name: validation
+      image: alpine:3.20
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          apk add --no-cache fio >/dev/null 2>&1
+          echo "=== mounting volume ==="
+          MNT=/mnt/volume
+          DF_BEFORE=$(df -h "$MNT" | tail -1)
+          echo "$DF_BEFORE"
+          echo "=== writing initial block ==="
+          dd if=/dev/urandom of="$MNT/initial-block" bs=1M count=16 oflag=direct status=none
+          sync
+          echo "=== fio: 4k random read/write latency (60s, 8 jobs) ==="
+          fio --name=randrw --directory="$MNT" --size=256m \
+              --rw=randrw --rwmixread=75 --bs=4k --numjobs=8 \
+              --ioengine=libaio --direct=1 --iodepth=32 \
+              --runtime=60 --time_based --group_reporting \
+              --output=/tmp/fio-report.txt
+          grep -E "read: IOPS|write: IOPS|lat .*avg" /tmp/fio-report.txt
+          echo "=== DONE - pod stays running for inspection ==="
+          exec sleep infinity
+      volumeMounts:
+        - name: volume
+          mountPath: /mnt/volume
+      resources:
+        requests:
+          cpu: 250m
+          memory: 128Mi
+        limits:
+          cpu: "1"
+          memory: 512Mi
+  volumes:
+    - name: volume
+      persistentVolumeClaim:
+        claimName: iscsi-validation-pvc
