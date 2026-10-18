@@ -15,10 +15,9 @@ spec:
     server: https://kubernetes.default.svc
     namespace: immich
   syncPolicy:
-    # TEMPORARY: paused for Longhorn -> truenas data migration window.
-    # automated:
-    #   prune: true
-    #   selfHeal: true
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true
 ---
@@ -39,10 +38,9 @@ spec:
     server: https://kubernetes.default.svc
     namespace: immich
   syncPolicy:
-    # TEMPORARY: paused for Longhorn -> truenas data migration window.
-    # automated:
-    #   prune: true
-    #   selfHeal: true
+    automated:
+      prune: true
+      selfHeal: true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -68,10 +66,9 @@ spec:
     server: https://kubernetes.default.svc
     namespace: immich
   syncPolicy:
-    # TEMPORARY: paused for Longhorn -> truenas data migration window.
-    # automated:
-    #   prune: true
-    #   selfHeal: true
+    automated:
+      prune: true
+      selfHeal: true
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
@@ -90,7 +87,6 @@ spec:
     server: https://kubernetes.default.svc
     namespace: immich
   syncPolicy:
-    # TEMPORARY: paused for Longhorn -> truenas data migration window.
-    # automated:
-    #   prune: true
-    #   selfHeal: true
+    automated:
+      prune: true
+      selfHeal: true
