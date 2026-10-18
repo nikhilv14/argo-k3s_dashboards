@@ -10,6 +10,12 @@ controller:
   replicaCount: 3
 
 driver:
+  # Full driver config (incl. TrueNAS API key) lives in the sealed secret
+  # `democratic-csi` (manifests/sealed-secret.yaml), key driver-config-file.yaml.
+  # `config.driver` is still required inline so the chart's mount-iscsi helper
+  # can detect the iscsi driver and mount iscsiadm into the pods.
+  config:
+    driver: freenas-api-iscsi
   existingConfigSecret: democratic-csi
 
 node:
