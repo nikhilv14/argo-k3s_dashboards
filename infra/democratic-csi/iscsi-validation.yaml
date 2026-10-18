@@ -25,8 +25,15 @@ metadata:
   labels:
     app: iscsi-validation
 spec:
-  # Pin to the LXC worker: this pod exists to prove TrueNAS iSCSI works there.
-  nodeName: k3s-worker-z690
+  # PROVEN (2026-10-18): z690 cannot host kernel iSCSI sessions. `iscsiadm -m
+  # discovery` succeeds (userspace-only) but `--login` crashes iscsid
+  # ("daemon died?", error 18) — the kernel iSCSI netlink listener only exists
+  # in init_net, and this privileged LXC shares the PVE 7.0 kernel (7.0.14-20-pve,
+  # pre-netns-aware). Fix requires PVE host upgrade to a >=6.12 kernel or a VM.
+  # WFFC note: nodeName bypasses the scheduler and deadlocks PVC binding —
+  # always pin with nodeSelector so volume.kubernetes.io/selected-node gets set.
+  nodeSelector:
+    kubernetes.io/hostname: k3s-node1
   containers:
     - name: validation
       image: alpine:3.20
