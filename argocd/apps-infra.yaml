@@ -119,38 +119,6 @@ spec:
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: longhorn
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  project: infra
-  sources:
-    - repoURL: https://charts.longhorn.io
-      chart: longhorn
-      targetRevision: 1.10.1
-      helm:
-        valueFiles:
-          - $values/infra/longhorn/values.yaml
-    # ref source doubles as extra-manifests path: RecurringJob CRs live here
-    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
-      targetRevision: main
-      ref: values
-      path: longhorn
-  destination:
-    server: https://kubernetes.default.svc
-    namespace: longhorn-system
-  syncPolicy:
-    automated:
-      prune: true
-      selfHeal: true
-    syncOptions:
-      - ServerSideApply=true
-      - CreateNamespace=true
----
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
   name: ingress-nginx
   namespace: argocd
   annotations:
