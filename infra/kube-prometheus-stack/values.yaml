@@ -18,7 +18,7 @@ prometheus:
     storageSpec:
       volumeClaimTemplate:
         spec:
-          storageClassName: longhorn
+          storageClassName: truenas-iscsi
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
@@ -38,7 +38,7 @@ alertmanager:
     storage:
       volumeClaimTemplate:
         spec:
-          storageClassName: longhorn
+          storageClassName: truenas-iscsi
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
@@ -68,7 +68,7 @@ grafana:
       memory: 512Mi
   persistence:
     enabled: true
-    storageClassName: longhorn
+    storageClassName: truenas-iscsi
     size: 5Gi
   sidecar:
     dashboards:
