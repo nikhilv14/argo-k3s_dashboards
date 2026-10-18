@@ -1,0 +1,46 @@
+# Phase 5 validation: TrueNAS NFS pipeline test.
+# PVC provisioned by democratic-csi-nfs (truenas-nfs SC), pod pinned to
+# k3s-worker-z690 — the whole point of the NFS driver: the privileged LXC
+# that CANNOT host kernel iSCSI sessions can consume NFS-backed RWX volumes.
+#
+# Apply:  kubectl apply -f manifests/nfs-validation.yaml
+# Watch:  kubectl -n democratic-csi get pvc,pod -l app=nfs-validation -w
+#
+# Run fio: kubectl -n democratic-csi exec nfs-validation -- \
+#   sh -c 'apk add -q fio && fio --name=randrw --filename=/mnt/data/fio.test \
+#     --rw=randrw --bs=4k --size=256M --numjobs=4 --iodepth=32 \
+#     --runtime=30 --time_based --group_reporting --direct=1'
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: nfs-validation
+  namespace: democratic-csi
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: truenas-nfs
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nfs-validation
+  namespace: democratic-csi
+  labels:
+    app: nfs-validation
+spec:
+  nodeSelector:
+    kubernetes.io/hostname: k3s-worker-z690
+  containers:
+    - name: fio
+      image: alpine:3.21
+      command: ["sh", "-c", "apk add -q fio >/dev/null 2>&1; echo '=== nfs fio ready ==='; echo '=== initial block write ==='; dd if=/dev/zero of=/mnt/data/init bs=1M count=1 2>/dev/null; sync; echo '=== quick fio randrw 4k ==='; fio --name=randrw --filename=/mnt/data/fio.test --rw=randrw --bs=4k --size=128M --numjobs=2 --iodepth=16 --runtime=10 --time_based --group_reporting --direct=1 2>/dev/null | grep -E 'read:|write:|iops=' ; exec sleep infinity"]
+      volumeMounts:
+        - name: data
+          mountPath: /mnt/data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: nfs-validation

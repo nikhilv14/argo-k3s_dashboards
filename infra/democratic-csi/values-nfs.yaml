@@ -1,0 +1,41 @@
+# democratic-csi: TrueNAS NFS driver (freenas-api-nfs)
+# Deployed by ArgoCD app "democratic-csi-nfs" (argocd/apps-infra.yaml) —
+# separate Helm release because the chart supports exactly ONE driver per
+# release. iSCSI lives in the "democratic-csi" release; NFS in this one.
+#
+# NFS works on ALL nodes including k3s-worker-z690 (privileged LXC) because
+# it needs no kernel iSCSI netlink sessions — plain kernel NFS client.
+driver:
+  # Inline driver type so the chart's mount-nfs helper renders; the full
+  # config (with API key) lives in the sealed secret `democratic-csi-nfs`
+  # (manifests/nfs-sealed-secret.yaml), key driver-config-file.yaml.
+  config:
+    driver: freenas-api-nfs
+  existingConfigSecret: democratic-csi-nfs
+
+csiDriver:
+  # Distinct name from the iSCSI release (org.democratic-csi) so both
+  # node plugins register side by side without collision.
+  name: org.democratic-csi.nfs
+  fsGroupPolicy: File
+
+controller:
+  # HA across the 3 control-plane/server nodes (node1, nuc, hp-g9).
+  replicaCount: 3
+
+storageClasses:
+  - name: truenas-nfs
+    default: false   # truenas-iscsi stays the cluster default
+    reclaimPolicy: Delete
+    volumeBindingMode: WaitForFirstConsumer
+    allowVolumeExpansion: true
+    mountOptions:
+      - noatime
+      - nfsvers=4.2
+      - nconnect=8
+      - hard
+    parameters:
+      fsType: nfs
+      detachedVolumesFromSnapshots: "false"
+
+volumeSnapshotClasses: []

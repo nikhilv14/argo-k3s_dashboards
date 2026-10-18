@@ -367,3 +367,42 @@ spec:
     syncOptions:
       - ServerSideApply=true
       - CreateNamespace=true
+---
+# TrueNAS NFS CSI driver (democratic-csi-nfs). Second release because the
+# chart supports ONE driver per release. Works on k3s-worker-z690 (LXC) —
+# no kernel iSCSI netlink sessions needed. Driver config in
+# infra/democratic-csi/manifests/nfs-sealed-secret.yaml; validation pod
+# manifests/nfs-validation.yaml proves RWX on the LXC node.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: democratic-csi-nfs
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: infra
+  sources:
+    - repoURL: https://democratic-csi.github.io/charts/
+      chart: democratic-csi
+      targetRevision: 0.15.1
+      helm:
+        valueFiles:
+          - $values/infra/democratic-csi/values-nfs.yaml
+    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
+      ref: values
+      path: infra/democratic-csi
+    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
+      path: infra/democratic-csi/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: democratic-csi
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
