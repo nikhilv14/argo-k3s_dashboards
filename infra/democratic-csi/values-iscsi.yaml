@@ -1,17 +1,19 @@
 # democratic-csi: TrueNAS iSCSI driver (freenas-api-iscsi)
-# Deployed by ArgoCD app "democratic-csi" (argocd/apps-infra.yaml).
-# Driver config (incl. TrueNAS API key) lives in sealed-secret.yaml.
+# Managed by ArgoCD app "democratic-csi" (multi-source: chart 0.15.1 + this file
+# + manifests/ directory). Secrets are sealed via manifests/sealed-secret.yaml.
 csiDriver:
   name: org.democratic-csi
   fsGroupPolicy: File
 
+controller:
+  # HA across the 3 control-plane/server nodes (node1, nuc, hp-g9).
+  replicaCount: 3
+
 driver:
   existingConfigSecret: democratic-csi
-  config:
-    driver: freenas-api-iscsi
 
 node:
-  # k3s kubelet on this cluster uses the standard path (confirmed via
+  # K3s kubelet uses the standard path on this cluster (verified via
   # kubelet CSI plugin registration logs on k3s-worker-z690).
   kubeletHostPath: /var/lib/kubelet
 
@@ -24,5 +26,3 @@ storageClasses:
     parameters:
       fsType: ext4
       detachedVolumesFromSnapshots: "false"
-
-volumeSnapshotClasses: []
