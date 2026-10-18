@@ -1,9 +1,12 @@
 # Phase 5 validation: TrueNAS iSCSI pipeline test.
 # PVC provisioned by democratic-csi (truenas-iscsi SC), pod pinned to
-# k3s-worker-z690 (privileged LXC) to prove kernel iSCSI sessions work there
+# k3s-worker-z690 (primary validation node — z690 LXC cannot host iSCSI sessions) to prove kernel iSCSI sessions work there
 # — the scenario Longhorn's embedded iscsid failed on.
-# fio: exec into the pod, e.g.
-#   kubectl -n democratic-csi exec iscsi-validation -- \
+#
+# Apply:  kubectl apply -f manifests/iscsi-validation.yaml
+# Watch:  kubectl -n democratic-csi get pvc,pod -l app=iscsi-validation -w
+#
+# Run fio:  kubectl -n democratic-csi exec iscsi-validation -- \
 #     fio --name=randwrite --filename=/mnt/data/fio.test --rw=randwrite \
 #     --bs=4k --size=256M --numjobs=4 --iodepth=32 --runtime=30 \
 #     --time_based --group_reporting --direct=1
@@ -30,7 +33,7 @@ metadata:
 spec:
   # Remove the nodeSelector to schedule on any node.
   nodeSelector:
-    kubernetes.io/hostname: k3s-worker-z690
+    kubernetes.io/hostname: k3s-node1
   containers:
     - name: fio
       image: leplusorg/fio:latest
