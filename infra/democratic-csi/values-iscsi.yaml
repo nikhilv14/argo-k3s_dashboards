@@ -1,0 +1,26 @@
+# democratic-csi: TrueNAS iSCSI driver (freenas-api-iscsi)
+# Deployed by ArgoCD app "democratic-csi" (argocd/apps-infra.yaml).
+# Driver config (incl. TrueNAS API key) lives in sealed-secret.yaml.
+csiDriver:
+  name: org.democratic-csi
+  fsGroupPolicy: File
+
+driver:
+  existingConfigSecret: democratic-csi
+  config:
+    driver: freenas-api-iscsi
+
+node:
+  kubeletHostPath: /var/lib/rancher/k3s/agent/kubelet
+
+storageClasses:
+  - name: truenas-iscsi
+    default: true
+    reclaimPolicy: Delete
+    volumeBindingMode: WaitForFirstConsumer
+    allowVolumeExpansion: true
+    parameters:
+      fsType: ext4
+      detachedVolumesFromSnapshots: "false"
+
+volumeSnapshotClasses: []

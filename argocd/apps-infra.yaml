@@ -329,3 +329,41 @@ spec:
     syncOptions:
       - ServerSideApply=true
       - CreateNamespace=true
+---
+# TrueNAS iSCSI CSI driver (democratic-csi). Provisioner for the
+# truenas-iscsi StorageClass (default). API key sealed in
+# infra/democratic-csi/manifests/sealed-secret.yaml; validation pod
+# (pinned to k3s-worker-z690) lives in the same manifests dir.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: democratic-csi
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: infra
+  sources:
+    - repoURL: https://democratic-csi.github.io/charts/
+      chart: democratic-csi
+      targetRevision: 0.15.1
+      helm:
+        valueFiles:
+          - $values/infra/democratic-csi/values-iscsi.yaml
+    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
+      ref: values
+      path: infra/democratic-csi
+    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
+      path: infra/democratic-csi/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: democratic-csi
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
