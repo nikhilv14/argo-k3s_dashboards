@@ -15,10 +15,8 @@ spec:
     server: https://kubernetes.default.svc
     namespace: tandoor
   syncPolicy:
-    # TEMPORARY: paused for Longhorn -> truenas-iscsi data migration window.
-    # Re-enable automated sync after migration verification completes.
-    # automated:
-    #   prune: true
-    #   selfHeal: true
+    automated:
+      prune: true
+      selfHeal: true
     syncOptions:
       - CreateNamespace=true

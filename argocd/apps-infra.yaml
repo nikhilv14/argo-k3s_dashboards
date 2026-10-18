@@ -325,7 +325,7 @@ spec:
       path: infra/democratic-csi
     - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
       targetRevision: main
-      path: infra/democratic-csi/manifests
+      path: infra/democratic-csi/manifests-iscsi
   destination:
     server: https://kubernetes.default.svc
     namespace: democratic-csi
@@ -364,7 +364,7 @@ spec:
       path: infra/democratic-csi
     - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
       targetRevision: main
-      path: infra/democratic-csi/manifests
+      path: infra/democratic-csi/manifests-nfs
   destination:
     server: https://kubernetes.default.svc
     namespace: democratic-csi
