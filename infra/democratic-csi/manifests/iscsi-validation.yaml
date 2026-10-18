@@ -36,8 +36,20 @@ spec:
     kubernetes.io/hostname: k3s-node1
   containers:
     - name: fio
-      image: leplusorg/fio:latest
-      command: ["sleep", "infinity"]
+      # leplusorg/fio does not exist on docker.io; install fio from apk instead.
+      image: docker.io/library/alpine:3.20
+      command: ["/bin/sh", "-c"]
+      args:
+        - |
+          apk add --no-cache fio >/dev/null 2>&1 || apk add fio
+          echo "=== initial block write ==="
+          dd if=/dev/zero of=/mnt/data/block0 bs=1M count=16 conv=fsync status=none
+          echo "=== quick fio randrw 4k ==="
+          fio --name=randrw --filename=/mnt/data/fio.test --rw=randrw --bs=4k \
+              --size=256M --numjobs=2 --iodepth=16 --runtime=20 --time_based \
+              --group_reporting --direct=1 | tail -20
+          echo "=== holding volume for inspection ==="
+          sleep infinity
       volumeMounts:
         - name: data
           mountPath: /mnt/data
