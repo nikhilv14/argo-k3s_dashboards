@@ -42,6 +42,15 @@ extraVolumeMounts:
     mountPath: /run/log/journal
     readOnly: true
 
+tolerations:
+  # k3s-worker-z690 is tainted lxc-no-iscsi=true:NoSchedule (no kernel iSCSI
+  # in the LXC). Promtail is stateless (ships logs to Loki) and MUST keep
+  # running there or logs from z690 vanish after any reschedule.
+  - key: lxc-no-iscsi
+    operator: Equal
+    value: "true"
+    effect: NoSchedule
+
 resources:
   requests:
     cpu: 50m

@@ -69,10 +69,19 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   project: infra
-  source:
-    repoURL: https://metallb.github.io/metallb
-    chart: metallb
-    targetRevision: 0.14.5
+  # Multi-source so the chart can consume values from this repo ($values ref),
+  # mirroring the promtail/kube-prometheus-stack app pattern. Needed to inject
+  # the lxc-no-iscsi toleration into the speaker DaemonSet (k3s-worker-z690).
+  sources:
+    - repoURL: https://metallb.github.io/metallb
+      chart: metallb
+      targetRevision: 0.14.5
+      helm:
+        valueFiles:
+          - $values/infra/metallb/values.yaml
+    - ref: values
+      repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
   destination:
     server: https://kubernetes.default.svc
     namespace: metallb-system

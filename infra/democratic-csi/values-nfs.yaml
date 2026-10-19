@@ -38,4 +38,15 @@ storageClasses:
       fsType: nfs
       detachedVolumesFromSnapshots: "false"
 
+node:
+  tolerations:
+    # The NFS node plugin deliberately tolerates lxc-no-iscsi on
+    # k3s-worker-z690: it only installs the NFS mount helper, and plain
+    # kernel NFS works in the LXC (no iscsid needed). Without this, no
+    # truenas-nfs PVC can ever be mounted by a pod on z690.
+    - key: lxc-no-iscsi
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
+
 volumeSnapshotClasses: []

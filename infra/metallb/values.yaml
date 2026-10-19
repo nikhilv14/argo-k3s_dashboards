@@ -1,0 +1,11 @@
+# metallb chart overrides for the ArgoCD app "metallb" (chart 0.14.5).
+speaker:
+  tolerations:
+    # k3s-worker-z690 is tainted lxc-no-iscsi=true:NoSchedule (no kernel
+    # iSCSI in the LXC). The speaker must run on EVERY node or that node
+    # stops announcing LoadBalancer IPs (L2 member list loses it after a
+    # reschedule). It is stateless w.r.t. storage.
+    - key: lxc-no-iscsi
+      operator: Equal
+      value: "true"
+      effect: NoSchedule
