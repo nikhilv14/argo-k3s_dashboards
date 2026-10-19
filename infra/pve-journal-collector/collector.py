@@ -37,6 +37,18 @@ START_BACK = int(os.environ.get("START_BACK_SECS", "600"))
 CLUSTER = os.environ.get("PVE_CLUSTER", "beast-cluster")
 
 MAX_LAG_US = int(os.environ.get("MAX_LAG_US", str(12 * 3600 * 1_000_000)))
+# Loki rejects entries older than reject_old_samples_max_age (24h) with HTTP
+# 400. Filter anything older here BEFORE staging so a replay of old PVE task
+# logs can't poison the push pipeline (a permanently-failing batch used to be
+# re-staged forever, growing memory until the container was OOMKilled).
+MAX_AGE_SECS = int(os.environ.get("LOKI_MAX_AGE_SECS", str(23 * 3600)))
+# Split pushes so the JSON body stays well under Loki's 4MB grpc max
+# message size (one batch of large task logs exceeded it -> HTTP 500).
+PUSH_CHUNK_LINES = int(os.environ.get("PUSH_CHUNK_LINES", "500"))
+
+
+def min_ts_ns():
+    return int((time.time() - MAX_AGE_SECS) * 1e9)
 
 JOURNAL_LINE = re.compile(
     r"^(?P<ts>\w{3} \d{2} \d{2}:\d{2}:\d{2}) (?P<host>\S+) (?P<tag>[^:\[\s]+)(?:\[(?P<pid>\d+)\])?: ?(?P<msg>.*)$"
@@ -119,6 +131,9 @@ class NodeCollector(threading.Thread):
                 return
             if cursor in self.seen_cursors or ts_us < self.since_us:
                 return
+            if ts_us * 1000 < min_ts_ns():
+                # older than Loki's reject window: drop, don't stage
+                return
             self.seen_cursors.add(cursor)
             nonlocal newest_us
             newest_us = ts_us if newest_us is None else max(newest_us, ts_us)
@@ -184,6 +199,10 @@ class NodeCollector(threading.Thread):
                 continue
             endtime = t.get("endtime") or t.get("starttime") or int(time.time())
             ts_ns = int(endtime) * 1_000_000_000
+            if ts_ns < min_ts_ns():
+                # old task replay: mark seen so it isn't refetched, but skip
+                # the push (Loki would 400 it)
+                continue
             tags = {
                 "job": "pve-tasks",
                 "host": self.node,
@@ -248,17 +267,54 @@ def main():
                         merged = batch.setdefault(labels, [])
                         merged.extend(vals)
                     c.out.clear()
-            if batch:
+            # chunk by line count so a single request can't exceed Loki's
+            # 4MB grpc message limit; each chunk keeps whole streams
+            chunks = []
+            chunk = {}
+            for labels, vals in batch.items():
+                remaining = list(vals)
+                while remaining:
+                    take = remaining[:PUSH_CHUNK_LINES]
+                    remaining = remaining[PUSH_CHUNK_LINES:]
+                    if chunk and sum(len(v) for v in chunk.values()) + len(take) > PUSH_CHUNK_LINES:
+                        chunks.append(chunk)
+                        chunk = {}
+                    chunk.setdefault(labels, []).extend(take)
+                    if len(chunk) > 64:
+                        chunks.append(chunk)
+                        chunk = {}
+            if chunk:
+                chunks.append(chunk)
+
+            for chunk in chunks:
                 try:
-                    push_to_loki(batch)
-                    print(f"[pusher] sent {sum(len(v) for v in batch.values())} lines", flush=True)
+                    push_to_loki(chunk)
+                    print(f"[pusher] sent {sum(len(v) for v in chunk.values())} lines", flush=True)
+                except urllib.error.HTTPError as e:
+                    body = ""
+                    try:
+                        body = e.read().decode(errors="replace")[:300]
+                    except Exception:
+                        pass
+                    print(f"[pusher] push rejected (HTTP {e.code}): {body}", flush=True)
+                    if e.code == 400:
+                        # permanent (old timestamps / bad stream): drop instead
+                        # of retrying forever — retrying grew memory unbounded
+                        continue
+                    _restage(collectors, chunk)
                 except Exception as e:
-                    print(f"[pusher] push failed: {e}", flush=True)
-                    # re-stage for retry
-                    for c in collectors:
-                        with c.lock:
-                            for labels, vals in batch.items():
-                                c.out.setdefault(labels, []).extend(vals)
+                    print(f"[pusher] push failed: {e!r}", flush=True)
+                    _restage(collectors, chunk)
+
+
+def _restage(collectors, batch):
+    # re-stage a transiently-failed chunk for retry (round-robin onto the
+    # first collector's outbox; ordering across nodes is not significant)
+    if not batch:
+        return
+    with collectors[0].lock:
+        for labels, vals in batch.items():
+            collectors[0].out.setdefault(labels, []).extend(vals)
 
     collectors = [NodeCollector(n, h) for n, h in node_map]
     threading.Thread(target=pusher, daemon=True).start()

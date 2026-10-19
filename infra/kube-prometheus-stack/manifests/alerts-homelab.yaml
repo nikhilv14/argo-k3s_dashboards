@@ -140,7 +140,9 @@ spec:
           annotations:
             summary: "Proxmox node {{ $labels.id }} rebooted"
         - alert: PVEGuestDown
-          expr: pve_up{id=~"qemu/.*|lxc/.*"} == 0
+          # Ignore list: lxc/100 and lxc/106 are intentionally decommissioned
+          # (kept stopped on purpose); lxc/104 is still monitored.
+          expr: pve_up{id=~"qemu/.*|lxc/.*",id!~"lxc/(100|106)"} == 0
           for: 10m
           labels:
             severity: critical
