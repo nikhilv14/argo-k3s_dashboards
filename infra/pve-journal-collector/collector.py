@@ -306,6 +306,15 @@ def main():
                     print(f"[pusher] push failed: {e!r}", flush=True)
                     _restage(collectors, chunk)
 
+    collectors = [NodeCollector(n, h) for n, h in node_map]
+    threading.Thread(target=pusher, daemon=True).start()
+    threading.Thread(target=serve_health, args=(int(os.environ.get("HEALTH_PORT", "9300")),), daemon=True).start()
+    for c in collectors:
+        c.start()
+    print(f"collecting {NODES} -> {LOKI_URL}", flush=True)
+    while True:
+        time.sleep(3600)
+
 
 def _restage(collectors, batch):
     # re-stage a transiently-failed chunk for retry (round-robin onto the
@@ -315,15 +324,6 @@ def _restage(collectors, batch):
     with collectors[0].lock:
         for labels, vals in batch.items():
             collectors[0].out.setdefault(labels, []).extend(vals)
-
-    collectors = [NodeCollector(n, h) for n, h in node_map]
-    threading.Thread(target=pusher, daemon=True).start()
-    threading.Thread(target=serve_health, args=(int(os.environ.get("HEALTH_PORT", "9300")),), daemon=True).start()
-    for c in collectors:
-        c.start()
-    print(f"collecting {NODES} -> {LOKI_URL}", flush=True)
-    while True:
-        time.sleep(3600)
 
 
 if __name__ == "__main__":
