@@ -101,3 +101,15 @@ kubeControllerManager:
   enabled: false
 kubeScheduler:
   enabled: false
+# k3s: the default kubeApiServer ServiceMonitor scrapes the embedded
+# apiserver on all 3 control-plane nodes; its histogram families alone
+# (apiserver_request_*, etcd_request_*, watch/body-size buckets) generate
+# ~150k of the cluster's 274k head series — the main driver of Prometheus
+# OOM-kills on this cluster. Homelab: k8s control-plane SLO metrics are not
+# consumed by any dashboard/alert we care about.
+kubeApiServer:
+  enabled: false
+# k3s: no separate etcd endpoints exist; the chart's kube-etcd monitor
+# never finds targets and its rules can't fire.
+kubeEtcd:
+  enabled: false
