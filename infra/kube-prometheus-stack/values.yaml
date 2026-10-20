@@ -12,9 +12,14 @@ prometheus:
     resources:
       requests:
         cpu: 100m
-        memory: 512Mi
-      limits:
         memory: 1Gi
+      limits:
+        # Was 1Gi: caused a chronic OOM death spiral (84 restarts). Each
+        # restart replays the WAL and compacts 2h TSDB blocks at 3+ cores,
+        # spiking RSS past the limit before queries can even be served.
+        # k3s cluster with cAdvisor + kube-state-metrics + PVE exporters
+        # needs ~1.5Gi head; 2Gi leaves compaction headroom.
+        memory: 2Gi
     storageSpec:
       volumeClaimTemplate:
         spec:
