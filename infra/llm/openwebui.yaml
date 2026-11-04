@@ -39,6 +39,16 @@ spec:
               value: http://llm-router.llm.svc.cluster.local:8085/v1
             - name: OPENAI_API_KEY
               value: sk-router-unused
+            # RAG embeddings: use the cluster's bge-m3 service instead of letting the UI
+            # download and run its own sentence-transformers model on CPU.
+            - name: RAG_EMBEDDING_ENGINE
+              value: openai
+            - name: RAG_OPENAI_API_BASE_URL
+              value: http://llm-embed.llm.svc.cluster.local:8082/v1
+            - name: RAG_OPENAI_API_KEY
+              value: sk-local-unused
+            - name: RAG_EMBEDDING_MODEL
+              value: bge-m3
             - name: ENABLE_WEB_SEARCH
               value: "true"
             - name: WEB_SEARCH_ENGINE
