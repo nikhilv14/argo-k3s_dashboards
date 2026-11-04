@@ -89,6 +89,10 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: democratic-csi
       server: https://kubernetes.default.svc
+    - namespace: llm
+      server: https://kubernetes.default.svc
+    - namespace: search
+      server: https://kubernetes.default.svc
   sourceRepos:
     - https://github.com/nikhilv14/argo-k3s_dashboards.git
     - https://charts.longhorn.io
