@@ -57,3 +57,29 @@ spec:
     - hosts:
         - llm.home
       secretName: llm-router-tls
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: llm-embed
+  namespace: llm
+  annotations:
+    cert-manager.io/cluster-issuer: internal-ca
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: embed.home
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: llm-embed
+                port:
+                  number: 8082
+  tls:
+    - hosts:
+        - embed.home
+      secretName: llm-embed-tls
