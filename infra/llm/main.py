@@ -142,17 +142,9 @@ async def chat(request: Request):
     body = await request.json()
     messages = body.get("messages", [])
 
-    # No local vision model is deployed, and forwarding a picture to the text-only
-    # coder returns an opaque upstream 500. Refuse it up front with a usable message.
-    if attachment_kind(messages) == "image":
-        return JSONResponse(
-            status_code=400,
-            content={"error": "image input is not supported: no vision model (mmproj) is deployed "
-                              "for the local models. Send the image as extracted text, or route "
-                              "explicitly to a cloud model.",
-                     "_router": {"model": None, "rule": "precheck-vision", "reason": "image attachment"}},
-        )
-
+    # The coder runs with an mmproj projector (llama-coder.service on the GPU VM), so
+    # pictures are routed locally. If that projector is ever removed, this path will
+    # surface the upstream error verbatim rather than silently guessing.
     model, rule, reason = decide(messages)
 
     if model is None:
