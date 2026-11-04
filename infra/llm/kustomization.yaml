@@ -11,6 +11,7 @@ resources:
   - router.yaml
   - embed.yaml
   - openwebui.yaml
+  - ingress.yaml
 configMapGenerator:
   - name: llm-router-code
     files:

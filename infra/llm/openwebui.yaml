@@ -59,6 +59,8 @@ spec:
               value: "3"
             - name: WEB_SEARCH_CONCURRENT_REQUESTS
               value: "1"
+            - name: WEBUI_URL
+              value: https://chat.home
             - name: ENABLE_OLLAMA_API
               value: "false"
             - name: WEBUI_SECRET_KEY
