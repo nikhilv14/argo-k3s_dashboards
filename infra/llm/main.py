@@ -24,6 +24,7 @@ CLOUD_MODEL = os.environ.get("CLOUD_MODEL", "cloud")
 CLOUD_ENABLED = os.environ.get("CLOUD_ENABLED", "false").lower() == "true"
 
 FAMILY_TOKENS = int(os.environ.get("FAMILY_MAX_TOKENS", "2000"))
+FAMILY_CTX = int(os.environ.get("FAMILY_CTX", "4096"))
 DEEP_TOKENS = int(os.environ.get("DEEP_MIN_TOKENS", "12000"))
 CLOUD_TOKENS = int(os.environ.get("CLOUD_MIN_TOKENS", "32000"))
 
@@ -36,8 +37,13 @@ PLANNING = re.compile(
 app = FastAPI()
 
 
-def est_tokens(messages):
-    """Cheap token estimate: ~4 chars/token plus per-message overhead."""
+def est_tokens(messages, tools=None):
+    """Cheap token estimate: ~4 chars/token plus per-message overhead.
+
+    Tool schemas must be counted: an OpenAI-compatible UI (Open WebUI) sends
+    several thousand tokens of tool definitions on every request, which is
+    enough to overflow a small model's context on its own.
+    """
     chars = 0
     for m in messages:
         c = m.get("content")
@@ -47,6 +53,8 @@ def est_tokens(messages):
             for part in c:
                 if isinstance(part, dict) and part.get("type") == "text":
                     chars += len(part.get("text", ""))
+    if tools:
+        chars += len(json.dumps(tools))
     return chars // 4 + 4 * len(messages)
 
 
@@ -103,9 +111,9 @@ async def judge(messages, turns):
     return "coder" if "CODER" in out.upper() else "family"
 
 
-def decide(messages):
+def decide(messages, tools=None):
     """Return (model, rule, reason). Deterministic rules first."""
-    tokens = est_tokens(messages)
+    tokens = est_tokens(messages, tools)
     turns = sum(1 for m in messages if m.get("role") == "user")
     attached = has_attachment(messages)
     text = " ".join(m.get("content") for m in messages if isinstance(m.get("content"), str))
@@ -119,9 +127,45 @@ def decide(messages):
         return ("coder", "rule3-deep", f"{tokens} tok or planning intent")
     if tokens >= FAMILY_TOKENS or turns >= 4:
         return ("coder", "rule2-size", f"{tokens} tok / {turns} turns")
-    if turns <= 3:
+    if turns <= 3 and tokens <= FAMILY_CTX:
         return ("family", "rule1-short", f"{tokens} tok / {turns} turns")
+    if tokens > FAMILY_CTX:
+        return ("coder", "rule2-family-overflow", f"{tokens} tok exceeds family ctx {FAMILY_CTX}")
     return (None, "rule5-judge", f"{tokens} tok / {turns} turns")
+
+
+async def stream_upstream(body, headers, model, rule, reason):
+    """Relay SSE verbatim. Errors are surfaced as JSON before the stream opens."""
+    client = httpx.AsyncClient(timeout=None)
+    req = client.build_request("POST", f"{LITELLM}/chat/completions", headers=headers, json=body)
+    try:
+        resp = await client.send(req, stream=True)
+    except httpx.HTTPError as exc:
+        await client.aclose()
+        return JSONResponse(status_code=502, content={"error": f"upstream transport error: {exc}",
+                                                      "_router": {"model": model, "rule": rule}})
+    if resp.status_code != 200:
+        raw = await resp.aread()
+        await resp.aclose()
+        await client.aclose()
+        try:
+            payload = json.loads(raw)
+        except ValueError:
+            payload = raw[:400].decode("utf-8", "replace")
+        return JSONResponse(status_code=resp.status_code,
+                            content={"upstream": payload,
+                                     "_router": {"model": model, "rule": rule, "reason": reason}})
+
+    async def relay():
+        try:
+            async for chunk in resp.aiter_raw():
+                yield chunk
+        finally:
+            await resp.aclose()
+            await client.aclose()
+
+    return StreamingResponse(relay(), media_type="text/event-stream",
+                             headers={"X-Router-Model": model, "X-Router-Rule": rule})
 
 
 @app.get("/health")
@@ -152,7 +196,7 @@ async def chat(request: Request):
     # The coder runs with an mmproj projector (llama-coder.service on the GPU VM), so
     # pictures are routed locally. If that projector is ever removed, this path will
     # surface the upstream error verbatim rather than silently guessing.
-    model, rule, reason = decide(messages)
+    model, rule, reason = decide(messages, body.get("tools"))
 
     if model is None:
         model = await judge(messages, sum(1 for m in messages if m.get("role") == "user"))
@@ -178,6 +222,9 @@ async def chat(request: Request):
     headers = {"Content-Type": "application/json"}
     if upstream_key:
         headers["Authorization"] = f"Bearer {upstream_key}"
+    if body.get("stream"):
+        return await stream_upstream(body, headers, model, rule, reason)
+
     try:
         async with httpx.AsyncClient(timeout=600) as c:
             r = await c.post(f"{LITELLM}/chat/completions", headers=headers, json=body)
