@@ -1,0 +1,34 @@
+# The coder model runs as a native systemd llama-server inside the GPU VM
+# (k3s-worker-z690, 192.168.12.243:8081) - deliberately NOT a pod: GPU-in-k8s
+# is out of scope for this estate. This Service + EndpointSlice gives the
+# cluster a stable DNS name for it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: llama
+  namespace: llm
+spec:
+  ports:
+    - name: http
+      port: 8080
+      targetPort: 8081
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: llama-manual
+  namespace: llm
+  labels:
+    kubernetes.io/service-name: llama
+    endpointslice.kubernetes.io/managed-by: user
+addressType: IPv4
+ports:
+  - name: http
+    port: 8081
+    protocol: TCP
+endpoints:
+  - addresses:
+      - 192.168.12.243
+    conditions:
+      ready: true

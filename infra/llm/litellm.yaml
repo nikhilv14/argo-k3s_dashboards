@@ -1,0 +1,77 @@
+# Single entry point for every local model. No master_key on purpose: this is a
+# ClusterIP service that is never exposed outside the cluster, so there is no
+# credential to keep in git. Add a SealedSecret master_key if it ever gets an
+# ingress.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: litellm-config
+  namespace: llm
+data:
+  config.yaml: |
+    model_list:
+      - model_name: coder
+        litellm_params:
+          model: openai/qwen3.8-27b
+          api_base: http://192.168.12.243:8081/v1
+          api_key: sk-local-unused
+      - model_name: family
+        litellm_params:
+          model: openai/qwen3.5-4b
+          api_base: http://192.168.12.245:8080/v1
+          api_key: sk-local-unused
+    litellm_settings:
+      drop_params: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: litellm
+  namespace: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: litellm
+  template:
+    metadata:
+      labels:
+        app: litellm
+    spec:
+      containers:
+        - name: litellm
+          image: ghcr.io/berriai/litellm:main-latest
+          args: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
+          ports:
+            - containerPort: 4000
+          volumeMounts:
+            - name: cfg
+              mountPath: /etc/litellm
+          readinessProbe:
+            httpGet:
+              path: /health/liveliness
+              port: 4000
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: cfg
+          configMap:
+            name: litellm-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: litellm
+  namespace: llm
+spec:
+  selector:
+    app: litellm
+  ports:
+    - port: 4000
+      targetPort: 4000

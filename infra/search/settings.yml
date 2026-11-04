@@ -1,0 +1,19 @@
+use_default_settings: true
+
+general:
+  instance_name: "homelab search"
+
+search:
+  safe_search: 0
+  # json is required by the llm-router / agent tooling; html is for humans
+  formats:
+    - html
+    - json
+
+server:
+  secret_key: "change-me-homelab-searxng"
+  limiter: false
+  image_proxy: false
+
+ui:
+  default_locale: en

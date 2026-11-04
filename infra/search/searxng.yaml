@@ -1,0 +1,61 @@
+# Perplexity-mode web search for the local models. No node pin: the Z690 worker
+# runs it fine at 100m CPU (the old HP-only pinning is gone on purpose).
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: searxng
+  namespace: search
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: searxng
+  template:
+    metadata:
+      labels:
+        app: searxng
+    spec:
+      containers:
+        - name: searxng
+          image: docker.io/searxng/searxng:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SEARXNG_BASE_URL
+              value: http://searxng.search.svc.cluster.local:8080/
+            - name: SEARXNG_SECRET
+              value: change-me-homelab
+            - name: UWSGI_WORKERS
+              value: "2"
+          volumeMounts:
+            - name: settings
+              mountPath: /etc/searxng/settings.yml
+              subPath: settings.yml
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: settings
+          configMap:
+            name: searxng-settings
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: searxng
+  namespace: search
+spec:
+  selector:
+    app: searxng
+  ports:
+    - port: 8080
+      targetPort: 8080

@@ -1,0 +1,48 @@
+# Local LLM platform: coder (GPU VM, native systemd), family (P1000 VM, native
+# systemd), bge-m3 embeddings (CPU pod), LiteLLM gateway, deterministic router,
+# Open WebUI front-end, and SearXNG for web search.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: llm
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+    targetRevision: main
+    path: infra/llm
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: llm
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: search
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+    targetRevision: main
+    path: infra/search
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: search
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

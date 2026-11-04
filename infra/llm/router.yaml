@@ -1,0 +1,73 @@
+# Deterministic-first router in front of LiteLLM. Rules 1-4 live in code
+# (main.py, mounted from the llm-router-code ConfigMap); rule 5 is a judge call
+# to the family model. Rule 4 (cloud) hard-fails with 503 until OPENROUTER_API_KEY
+# is supplied - it is never allowed to silently degrade to a local model.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-router
+  namespace: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llm-router
+  template:
+    metadata:
+      labels:
+        app: llm-router
+    spec:
+      containers:
+        - name: router
+          image: python:3.12-slim
+          command:
+            - sh
+            - -c
+            - pip install --quiet fastapi uvicorn httpx && uvicorn main:app --host 0.0.0.0 --port 8085
+          workingDir: /app
+          ports:
+            - containerPort: 8085
+          env:
+            - name: LITELLM_BASE
+              value: http://litellm.llm.svc.cluster.local:4000/v1
+            - name: LITELLM_KEY
+              value: ""
+            - name: OPENROUTER_API_KEY
+              value: ""
+            - name: FAMILY_MAX_TOKENS
+              value: "2000"
+            - name: DEEP_MIN_TOKENS
+              value: "12000"
+            - name: CLOUD_MIN_TOKENS
+              value: "32000"
+          volumeMounts:
+            - name: code
+              mountPath: /app
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8085
+            initialDelaySeconds: 25
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+      volumes:
+        - name: code
+          configMap:
+            name: llm-router-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: llm-router
+  namespace: llm
+spec:
+  selector:
+    app: llm-router
+  ports:
+    - port: 8085
+      targetPort: 8085
