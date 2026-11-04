@@ -20,6 +20,11 @@ data:
           model: openai/qwen3.5-4b
           api_base: http://192.168.12.245:8080/v1
           api_key: sk-local-unused
+      - model_name: cloud
+        litellm_params:
+          model: openai/deepseek/deepseek-v4.1-flash-1017
+          api_base: https://inference-api.nousresearch.com/v1
+          api_key: os.environ/NOUS_API_KEY
     litellm_settings:
       drop_params: true
 ---
@@ -44,6 +49,12 @@ spec:
           args: ["--config", "/etc/litellm/config.yaml", "--port", "4000"]
           ports:
             - containerPort: 4000
+          env:
+            - name: NOUS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: nous-api-key
+                  key: NOUS_API_KEY
           volumeMounts:
             - name: cfg
               mountPath: /etc/litellm

@@ -20,8 +20,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 LITELLM = os.environ.get("LITELLM_BASE", "http://litellm.llm.svc.cluster.local:4000/v1")
 API_KEY = os.environ.get("LITELLM_KEY", "")
-CLOUD_MODEL = os.environ.get("CLOUD_MODEL", "openrouter/anthropic/claude-sonnet-4")
-CLOUD_KEY = os.environ.get("OPENROUTER_API_KEY", "")
+CLOUD_MODEL = os.environ.get("CLOUD_MODEL", "cloud")
+CLOUD_ENABLED = os.environ.get("CLOUD_ENABLED", "false").lower() == "true"
 
 FAMILY_TOKENS = int(os.environ.get("FAMILY_MAX_TOKENS", "2000"))
 DEEP_TOKENS = int(os.environ.get("DEEP_MIN_TOKENS", "12000"))
@@ -159,15 +159,15 @@ async def chat(request: Request):
         model = await judge(messages, sum(1 for m in messages if m.get("role") == "user"))
 
     if model == "cloud":
-        if not CLOUD_KEY:
+        if not CLOUD_ENABLED:
             # Never silently fall back to a broken path: be explicit.
             return JSONResponse(
                 status_code=503,
-                content={"error": "cloud route selected but OPENROUTER_API_KEY is not configured",
+                content={"error": "cloud route selected but no provider is enabled (CLOUD_ENABLED=false)",
                          "rule": rule, "reason": reason},
             )
         body["model"] = CLOUD_MODEL
-        upstream_key = CLOUD_KEY
+        upstream_key = API_KEY
     else:
         body["model"] = model
         upstream_key = API_KEY

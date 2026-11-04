@@ -32,8 +32,10 @@ spec:
               value: http://litellm.llm.svc.cluster.local:4000/v1
             - name: LITELLM_KEY
               value: ""
-            - name: OPENROUTER_API_KEY
-              value: ""
+            - name: CLOUD_MODEL
+              value: cloud
+            - name: CLOUD_ENABLED
+              value: "true"
             - name: FAMILY_MAX_TOKENS
               value: "2000"
             - name: DEEP_MIN_TOKENS

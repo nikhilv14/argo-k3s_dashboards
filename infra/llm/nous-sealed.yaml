@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: nous-api-key
+  namespace: llm
+spec:
+  encryptedData:
+    NOUS_API_KEY: AgBQhLynCnyE+eK4GElKyoEvdrJWCOUWuhwjm40CS/547F0GpE7SE7r4ulOcuOjqJ0QBMrfeL1WhEC2cBitGYkttwpgulGx7x+SyQ5yfoWElHiSlxL4jABISlod5bNNEmucUaM+bKPBdYySzC+7q820xEz/77Iaa3+34EM52itbK0USLDGIR5b6IldyZeGxGQ64Guqd21CmKMAHA3rinolyDW1gpUeXb3SdbDuVVRgLrX8adKC6U51NbHleyT/aVsfJZbBAazKHMPkKr0dyucqCCsJcaj/NRwX5K5EttDx8cM9AHnqKkqQvyD/Wo0RT8fWIHsv6v4XtDSEKu3jgZ2Kh9Hz064bRI1zU2/Yza1TjW1rRPi5TdGcBHSpRmrtZLwQ5alk8fXZ+OyLgRZycQ5stQrt/0hCPD+e3jfaW+5URdxlsbC+jSP7ISm9Vp76xFTOQXah6zA8w+jNvsAJzMX3nialp8wwNDGHz3553DO1lWTDerVgUoeWCId7i2wF0wmMV3OrkmM6IJ+/Tri18BcG9t3LrZ5eNgP6+KRZiQ+rXbIDJpt2UQQqtjbCOPXiuIP/GcXQp2u6jIKaFKyiFr9WdEjtObAA53gX3qreNXWFWyr31PYAFRqoymyWF9fKDOV8tdazgGdLL97Ljhv/3dfkJHzZK7Egmpqt1q9NS0QMIrqEK/0WDRpob77OySNnweH3fTOtOuHCAh6EFxxDA+NZvjUEmPOQGXtLqcpXYEMiGDjmC638MIXxSA
+  template:
+    metadata:
+      name: nous-api-key
+      namespace: llm
+    type: Opaque
