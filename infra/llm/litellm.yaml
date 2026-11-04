@@ -50,6 +50,13 @@ spec:
           ports:
             - containerPort: 4000
           env:
+            # This proxy is a ClusterIP that only fronts local llama-servers plus one
+            # remote alias. Running without a master_key avoids keeping a credential in
+            # git and avoids adding a database (this build needs one for key auth).
+            # It is never exposed outside the cluster; add a sealed master_key +
+            # database_url before any ingress.
+            - name: LITELLM_DANGEROUSLY_PERMIT_WEAK_OR_UNSET_MASTER_KEY
+              value: "true"
             - name: NOUS_API_KEY
               valueFrom:
                 secretKeyRef:
