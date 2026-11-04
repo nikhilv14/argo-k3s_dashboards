@@ -22,6 +22,11 @@ data:
           api_key: sk-local-unused
     litellm_settings:
       drop_params: true
+    general_settings:
+      # Internal placeholder, not a credential: it only unlocks a ClusterIP proxy
+      # that fronts two local llama-server instances. Nothing external is reachable
+      # with it. Replace with a SealedSecret master_key before any ingress exists.
+      master_key: sk-local-internal
 ---
 apiVersion: apps/v1
 kind: Deployment

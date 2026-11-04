@@ -31,7 +31,7 @@ spec:
             - name: LITELLM_BASE
               value: http://litellm.llm.svc.cluster.local:4000/v1
             - name: LITELLM_KEY
-              value: ""
+              value: sk-local-internal
             - name: OPENROUTER_API_KEY
               value: ""
             - name: FAMILY_MAX_TOKENS
