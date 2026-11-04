@@ -39,6 +39,16 @@ spec:
               value: http://llm-router.llm.svc.cluster.local:8085/v1
             - name: OPENAI_API_KEY
               value: sk-router-unused
+            - name: ENABLE_WEB_SEARCH
+              value: "true"
+            - name: WEB_SEARCH_ENGINE
+              value: searxng
+            - name: SEARXNG_QUERY_URL
+              value: http://searxng.search.svc.cluster.local:8080/search?q=<query>
+            - name: WEB_SEARCH_RESULT_COUNT
+              value: "3"
+            - name: WEB_SEARCH_CONCURRENT_REQUESTS
+              value: "1"
             - name: ENABLE_OLLAMA_API
               value: "false"
             - name: WEBUI_SECRET_KEY
