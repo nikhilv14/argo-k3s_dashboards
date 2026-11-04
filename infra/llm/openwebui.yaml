@@ -49,6 +49,11 @@ spec:
               value: sk-local-unused
             - name: RAG_EMBEDDING_MODEL
               value: bge-m3
+            # 0.13 stores config in webui.db and only seeds from env on first boot, so
+            # env changes were ignored (web search never appeared in /api/config).
+            # Env is authoritative here, matching the GitOps flow for the rest of the stack.
+            - name: ENABLE_PERSISTENT_CONFIG
+              value: "false"
             - name: ENABLE_WEB_SEARCH
               value: "true"
             - name: WEB_SEARCH_ENGINE
