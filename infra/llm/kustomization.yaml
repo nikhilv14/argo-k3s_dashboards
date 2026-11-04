@@ -1,8 +1,6 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: llm
-generatorOptions:
-  disableNameSuffixHash: true
 resources:
   - namespace.yaml
   - llama-endpoints.yaml
@@ -16,3 +14,6 @@ configMapGenerator:
   - name: llm-router-code
     files:
       - main.py
+  - name: litellm-config
+    files:
+      - litellm-config.yaml
