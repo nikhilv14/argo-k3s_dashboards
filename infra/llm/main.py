@@ -132,9 +132,16 @@ def health():
 @app.get("/v1/models")
 async def models():
     """Passthrough so a UI pointed at the router still lists models."""
+    headers = {}
+    if API_KEY:
+        headers["Authorization"] = f"Bearer {API_KEY}"
     async with httpx.AsyncClient(timeout=30) as c:
-        r = await c.get(f"{LITELLM}/models", headers={"Authorization": f"Bearer {API_KEY}"})
-    return JSONResponse(status_code=r.status_code, content=r.json())
+        r = await c.get(f"{LITELLM}/models", headers=headers)
+    try:
+        return JSONResponse(status_code=r.status_code, content=r.json())
+    except ValueError:
+        return JSONResponse(status_code=502, content={"error": "upstream returned non-JSON",
+                                                      "upstream_status": r.status_code})
 
 
 @app.post("/v1/chat/completions")
