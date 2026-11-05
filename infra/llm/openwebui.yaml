@@ -76,6 +76,11 @@ spec:
                 [{"type": "prompt", "node_ids": ["2"], "key": "text"}, {"type": "negative_prompt", "node_ids": ["3"], "key": "text"}, {"type": "width", "node_ids": ["4"], "key": "width"}, {"type": "height", "node_ids": ["4"], "key": "height"}, {"type": "steps", "node_ids": ["5"], "key": "steps"}, {"type": "seed", "node_ids": ["5"], "key": "seed"}]
             - name: IMAGE_SIZE
               value: 512x512
+            # Chat-triggered image generation only runs when function_calling is
+            # "legacy": otherwise Open WebUI expects the model to call an image tool
+            # itself, which a local coder model does not do unprompted.
+            - name: DEFAULT_MODEL_PARAMS
+              value: '{"function_calling": "legacy"}'
             - name: ENABLE_WEB_SEARCH
               value: "true"
             - name: WEB_SEARCH_ENGINE
