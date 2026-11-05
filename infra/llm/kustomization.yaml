@@ -16,4 +16,5 @@ configMapGenerator:
       - main.py
   - name: litellm-config
     files:
-      - litellm-config.yaml
+      # key name matters: the container reads /etc/litellm/config.yaml
+      - config.yaml=litellm-config.yaml
