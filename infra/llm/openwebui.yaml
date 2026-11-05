@@ -54,6 +54,19 @@ spec:
             # Env is authoritative here, matching the GitOps flow for the rest of the stack.
             - name: ENABLE_PERSISTENT_CONFIG
               value: "false"
+            # Image generation: ComfyUI runs natively on the P1000 VM (VM 114, :8188),
+            # with SD1.5. The 5060 Ti has no spare VRAM (coder holds 15.6/16.3 GB), so image
+            # work lives on the 4 GB Pascal card instead of time-sharing the main GPU.
+            - name: ENABLE_IMAGE_GENERATION
+              value: "true"
+            - name: IMAGE_GENERATION_ENGINE
+              value: comfyui
+            - name: COMFYUI_BASE_URL
+              value: http://192.168.12.245:8188
+            - name: IMAGE_GENERATION_MODEL
+              value: v1-5-pruned-emaonly-fp16.safetensors
+            - name: IMAGE_SIZE
+              value: 512x512
             - name: ENABLE_WEB_SEARCH
               value: "true"
             - name: WEB_SEARCH_ENGINE
