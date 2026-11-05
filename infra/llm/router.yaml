@@ -36,12 +36,8 @@ spec:
               value: cloud
             - name: CLOUD_ENABLED
               value: "true"
-            - name: FAMILY_MAX_TOKENS
-              value: "2000"
             # real per-request window of llama-family (-c 12288 --parallel 1);
             # above this the request must go to the coder, not the 4B
-            - name: FAMILY_CTX
-              value: "12288"
             - name: DEEP_MIN_TOKENS
               value: "12000"
             - name: CLOUD_MIN_TOKENS

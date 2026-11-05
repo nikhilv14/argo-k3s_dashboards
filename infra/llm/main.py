@@ -1,7 +1,7 @@
 """Deterministic-first router in front of LiteLLM.
 
 Rules applied in order, first match wins (section 5 of the hardware contract):
-  1. < ~2K tokens, no attachment, <= 3 turns        -> family (P1000, 4B)
+  1. < ~2K tokens, no attachment, <= 3 turns        -> coder (only local tier)
   2. >= 2K tokens, or a document/page upload,
      or >= 4 turns                                  -> coder (5060 Ti, 27B)
   3. >= 12K tokens, or planning keywords            -> coder, deep settings
@@ -23,8 +23,6 @@ API_KEY = os.environ.get("LITELLM_KEY", "")
 CLOUD_MODEL = os.environ.get("CLOUD_MODEL", "cloud")
 CLOUD_ENABLED = os.environ.get("CLOUD_ENABLED", "false").lower() == "true"
 
-FAMILY_TOKENS = int(os.environ.get("FAMILY_MAX_TOKENS", "2000"))
-FAMILY_CTX = int(os.environ.get("FAMILY_CTX", "4096"))
 DEEP_TOKENS = int(os.environ.get("DEEP_MIN_TOKENS", "12000"))
 CLOUD_TOKENS = int(os.environ.get("CLOUD_MIN_TOKENS", "32000"))
 
@@ -90,16 +88,18 @@ async def judge(messages, turns):
     """60-token rubric, single label out. Only reached when no rule matched."""
     prompt = (
         "Classify the user's request. Answer with exactly one word.\n"
-        "FAMILY = everyday question, short answer is enough.\n"
         "CODER = code, debugging, tool use, or deep reasoning. "
         f"Turns so far: {turns}."
     )
+    headers = {"Content-Type": "application/json"}
+    if API_KEY:
+        headers["Authorization"] = f"Bearer {API_KEY}"
     async with httpx.AsyncClient(timeout=60) as c:
         r = await c.post(
             f"{LITELLM}/chat/completions",
-            headers={"Authorization": f"Bearer {API_KEY}"},
+            headers=headers,
             json={
-                "model": "family",
+                "model": "coder",
                 "messages": [{"role": "system", "content": prompt}] + messages[-4:],
                 "max_tokens": 60,
                 "temperature": 0,
@@ -108,7 +108,7 @@ async def judge(messages, turns):
         )
         r.raise_for_status()
         out = r.json()["choices"][0]["message"].get("content", "")
-    return "coder" if "CODER" in out.upper() else "family"
+    return "coder"  # single local tier; kept for the ambiguous-shape path
 
 
 def decide(messages, tools=None):
@@ -125,13 +125,9 @@ def decide(messages, tools=None):
         return ("cloud", "rule4-cloud", f"{tokens} tok or explicit request")
     if tokens >= DEEP_TOKENS or PLANNING.search(text):
         return ("coder", "rule3-deep", f"{tokens} tok or planning intent")
-    if tokens >= FAMILY_TOKENS or turns >= 4:
-        return ("coder", "rule2-size", f"{tokens} tok / {turns} turns")
-    if turns <= 3 and tokens <= FAMILY_CTX:
-        return ("family", "rule1-short", f"{tokens} tok / {turns} turns")
-    if tokens > FAMILY_CTX:
-        return ("coder", "rule2-family-overflow", f"{tokens} tok exceeds family ctx {FAMILY_CTX}")
-    return (None, "rule5-judge", f"{tokens} tok / {turns} turns")
+    # No second local tier any more: the P1000 4B was retired (the 27B on the 5060 Ti
+    # is both faster and stronger), so everything local lands on the coder.
+    return ("coder", "rule1-default", f"{tokens} tok / {turns} turns")
 
 
 async def stream_upstream(body, headers, model, rule, reason):
@@ -214,10 +210,6 @@ async def chat(request: Request):
     else:
         body["model"] = model
         upstream_key = API_KEY
-
-    body.pop("chat_template_kwargs", None) if model == "family" else None
-    if model == "family":
-        body.setdefault("chat_template_kwargs", {"enable_thinking": False})
 
     headers = {"Content-Type": "application/json"}
     if upstream_key:

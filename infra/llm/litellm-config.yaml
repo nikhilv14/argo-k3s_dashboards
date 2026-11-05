@@ -4,11 +4,6 @@ model_list:
       model: openai/qwen3.8-27b
       api_base: http://192.168.12.243:8081/v1
       api_key: sk-local-unused
-  - model_name: family
-    litellm_params:
-      model: openai/qwen3.5-4b
-      api_base: http://192.168.12.245:8080/v1
-      api_key: sk-local-unused
   - model_name: cloud
     litellm_params:
       model: openai/deepseek/deepseek-v4.1-flash-1017
