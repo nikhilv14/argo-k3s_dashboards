@@ -28,6 +28,11 @@ EMBED_PRIMARY = os.environ.get("EMBED_PRIMARY", "http://192.168.12.245:8090")
 EMBED_FALLBACK = os.environ.get("EMBED_FALLBACK", "http://llm-embed-cpu.llm.svc.cluster.local:8082")
 API_KEY = os.environ.get("LITELLM_KEY", "")
 CLOUD_MODEL = os.environ.get("CLOUD_MODEL", "cloud")
+# Which model ids this router advertises at /v1/models. Empty = advertise
+# everything upstream offers (plus "auto"). Set to a subset to keep a public
+# UI (chat.daemonagent.net) on a single choice without touching LiteLLM, so
+# other clients pointed at litellm directly keep the full catalogue.
+EXPOSED_MODELS = [m.strip() for m in os.environ.get("EXPOSED_MODELS", "").split(",") if m.strip()]
 # LiteLLM alias for the local 27B on the 5060 Ti
 LOCAL = os.environ.get("LOCAL_MODEL", "qwen3.8-27b")
 CLOUD_ENABLED = os.environ.get("CLOUD_ENABLED", "false").lower() == "true"
@@ -211,7 +216,13 @@ def health():
 
 @app.get("/v1/models")
 async def models():
-    """Passthrough so a UI pointed at the router still lists models."""
+    """Passthrough so a UI pointed at the router still lists models.
+
+    When EXPOSED_MODELS is set, only those ids are advertised — the public
+    chat UI then offers exactly that list. Requests naming a hidden model are
+    still routed by decide(), so nothing breaks for clients that talk to
+    LiteLLM directly.
+    """
     headers = {}
     if API_KEY:
         headers["Authorization"] = f"Bearer {API_KEY}"
@@ -219,9 +230,13 @@ async def models():
         r = await c.get(f"{LITELLM}/models", headers=headers)
     try:
         data = r.json()
-        ids = {m.get("id") for m in data.get("data", []) if isinstance(m, dict)}
-        if "auto" not in ids:
-            data.setdefault("data", []).append({
+        rows = [m for m in data.get("data", []) if isinstance(m, dict)]
+        if EXPOSED_MODELS:
+            rows = [m for m in rows if m.get("id") in EXPOSED_MODELS]
+        data["data"] = rows
+        ids = {m.get("id") for m in rows}
+        if "auto" not in ids and (not EXPOSED_MODELS or "auto" in EXPOSED_MODELS):
+            data["data"].append({
                 "id": "auto", "object": "model", "created": 0,
                 "owned_by": "router",
             })

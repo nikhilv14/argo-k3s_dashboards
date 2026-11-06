@@ -36,6 +36,9 @@ spec:
               value: cloud
             - name: CLOUD_ENABLED
               value: "true"
+            # public chat UI (open-webui) offers only this model; empty = all
+            - name: EXPOSED_MODELS
+              value: "cloud"
             # real per-request window of llama-family (-c 12288 --parallel 1);
             # above this the request must go to the coder, not the 4B
             - name: DEEP_MIN_TOKENS
