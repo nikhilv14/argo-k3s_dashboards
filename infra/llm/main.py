@@ -21,6 +21,8 @@ from fastapi.responses import JSONResponse, StreamingResponse
 LITELLM = os.environ.get("LITELLM_BASE", "http://litellm.llm.svc.cluster.local:4000/v1")
 API_KEY = os.environ.get("LITELLM_KEY", "")
 CLOUD_MODEL = os.environ.get("CLOUD_MODEL", "cloud")
+# LiteLLM alias for the local 27B on the 5060 Ti
+LOCAL = os.environ.get("LOCAL_MODEL", "qwen3.8-27b")
 CLOUD_ENABLED = os.environ.get("CLOUD_ENABLED", "false").lower() == "true"
 
 DEEP_TOKENS = int(os.environ.get("DEEP_MIN_TOKENS", "12000"))
@@ -99,7 +101,7 @@ async def judge(messages, turns):
             f"{LITELLM}/chat/completions",
             headers=headers,
             json={
-                "model": "coder",
+                "model": LOCAL,
                 "messages": [{"role": "system", "content": prompt}] + messages[-4:],
                 "max_tokens": 60,
                 "temperature": 0,
@@ -108,7 +110,7 @@ async def judge(messages, turns):
         )
         r.raise_for_status()
         out = r.json()["choices"][0]["message"].get("content", "")
-    return "coder"  # single local tier; kept for the ambiguous-shape path
+    return LOCAL  # single local tier; kept for the ambiguous-shape path
 
 
 def decide(messages, tools=None, requested=None):
@@ -120,8 +122,8 @@ def decide(messages, tools=None, requested=None):
     """
     if requested in ("cloud",):
         return ("cloud", "explicit-cloud", "client selected cloud")
-    if requested in ("coder", "coder-27b"):
-        return ("coder", "explicit-coder", "client selected coder")
+    if requested in ("coder", "coder-27b", LOCAL):
+        return (LOCAL, "explicit-coder", "client selected the local model")
     tokens = est_tokens(messages, tools)
     turns = sum(1 for m in messages if m.get("role") == "user")
     attached = has_attachment(messages)
@@ -129,14 +131,14 @@ def decide(messages, tools=None, requested=None):
 
     if attached:
         # uploads stay local, always
-        return ("coder", "rule2-attachment", f"{tokens} tok with attachment")
+        return (LOCAL, "rule2-attachment", f"{tokens} tok with attachment")
     if tokens >= CLOUD_TOKENS or explicit_cloud(messages):
         return ("cloud", "rule4-cloud", f"{tokens} tok or explicit request")
     if tokens >= DEEP_TOKENS or PLANNING.search(text):
-        return ("coder", "rule3-deep", f"{tokens} tok or planning intent")
+        return (LOCAL, "rule3-deep", f"{tokens} tok or planning intent")
     # No second local tier any more: the P1000 4B was retired (the 27B on the 5060 Ti
     # is both faster and stronger), so everything local lands on the coder.
-    return ("coder", "rule1-default", f"{tokens} tok / {turns} turns")
+    return (LOCAL, "rule1-default", f"{tokens} tok / {turns} turns")
 
 
 async def stream_upstream(body, headers, model, rule, reason):
