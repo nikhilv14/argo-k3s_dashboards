@@ -25,9 +25,20 @@ spec:
                 name: open-webui
                 port:
                   number: 8080
+    - host: chat.daemonagent.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: open-webui
+                port:
+                  number: 8080
   tls:
     - hosts:
         - chat.home
+        - chat.daemonagent.net
       secretName: open-webui-tls
 ---
 apiVersion: networking.k8s.io/v1

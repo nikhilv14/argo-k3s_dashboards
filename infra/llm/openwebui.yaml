@@ -48,7 +48,29 @@ spec:
                   name: webui-secret
                   key: WEBUI_SECRET_KEY
             - name: WEBUI_URL
-              value: https://chat.home
+              value: https://chat.daemonagent.net
+            # SSO: Open WebUI is a native OIDC client of Hydra (client 'openwebui').
+            # Local login form stays on as break-glass until the round trip is
+            # proven in a browser; then it gets disabled.
+            - name: ENABLE_OAUTH_SIGNUP
+              value: "true"
+            - name: OPENID_PROVIDER_URL
+              value: https://hydra.daemonagent.net/.well-known/openid-configuration
+            - name: OAUTH_CLIENT_ID
+              value: openwebui
+            - name: OAUTH_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: webui-secret
+                  key: OAUTH_CLIENT_SECRET
+            - name: OPENID_REDIRECT_URI
+              value: https://chat.daemonagent.net/oauth2/callback
+            - name: OAUTH_SCOPES
+              value: openid email profile
+            - name: OAUTH_PROVIDER_NAME
+              value: daemonagent SSO
+            - name: OAUTH_MERGE_ACCOUNTS_BY_EMAIL
+              value: "true"
             # 0.13 stores config in webui.db and only seeds from env on first boot.
             - name: ENABLE_PERSISTENT_CONFIG
               value: "false"
