@@ -1,0 +1,14 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: webui-secret
+  namespace: llm
+spec:
+  encryptedData:
+    WEBUI_SECRET_KEY: AgAi5Ys2pYyYlHu6tg6Dj5BKG3a/cafPKf0LxyA/xabeyPIjaUsJrixg/4511YVDk4Gc033Qp64wMiO5PREXiu2XaZyBepZe814sJQTQwZSKSH/007r2mSPmUpo7xfhJxymoel0AyOT0DWaocGkUWcaTWzo4s2GM9qhH/i7efHxRB3wAml0Vwdl5Sea81q/PwYU5AYZkmtjSOpToBtxzYsm8oJQ408otyYHTZWsNdQ7Gj0GK+1zTyJSRxESS8DoR4R/UzyO3gWSEpc+MToYaHlp4nF9a6SgvEqjin3iVXK50Yi0yuTkSqv5j5I+1Qw39XscHUJLoHW0+NCO2sWMK855BcmQzUhvDl4EKKeySqYXljR51IMPbxyM+rDyMid/Y4bCS9oDHMe5T07Vi770YZ1HCOh+nT3SS+DYEVbZ3gPpeMYZGhN+83KKfs2ZZXIOY20E/0QSVkvI1pUFoyhVYX0LL1kqAsUapq3uRhMa7ks/8TJ5044ZWSSnFxCSZvOgZhWZFSG2SFbSNiLXsLoh7RpGaW4Z0zIHvhZcKosA36jB9tAKGim9bL2FbUfUvjem7sWxdp2MPS0Bm8co/0JOXpqr06Ihnejy6kYBw9FxEBh5+OKzDkg2R3nF/6gE9tK+DEZkXWs4BW4ffOWWIA2cyTlDRqVwyXxPuPctKerveXCxFTlxg3ECqWlf7K1t+6QB+o0rs8qx/8S1JUjejp5qbJEdTrrufTSduxloQIzYAevJIvPw+yFXengl8dYOLZA==
+  template:
+    metadata:
+      name: webui-secret
+      namespace: llm
+    type: Opaque

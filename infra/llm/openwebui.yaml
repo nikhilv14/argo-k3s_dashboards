@@ -41,9 +41,12 @@ spec:
               value: sk-router-unused
             - name: ENABLE_OLLAMA_API
               value: "false"
-            # 32+ chars, required by this build for signing session tokens.
+            # Fernet key: must be 32 url-safe base64 bytes. Sealed, not in git.
             - name: WEBUI_SECRET_KEY
-              value: 6f2d9c1b8a4e3705d1c9b6f4e8a2705314cd9e7b2a6f
+              valueFrom:
+                secretKeyRef:
+                  name: webui-secret
+                  key: WEBUI_SECRET_KEY
             - name: WEBUI_URL
               value: https://chat.home
             # 0.13 stores config in webui.db and only seeds from env on first boot.

@@ -5,6 +5,7 @@ resources:
   - namespace.yaml
   - llama-endpoints.yaml
   - nous-sealed.yaml
+  - webui-sealed.yaml
   - litellm.yaml
   - router.yaml
   - embed.yaml
