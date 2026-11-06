@@ -1,6 +1,6 @@
-# Family front-end. Talks to the router, not LiteLLM directly, so rules 1-5
-# apply to everything entered through the UI. Data volume on truenas-iscsi
-# (proven working after the initiator-group fix) rather than local-path.
+# Family front-end. Talks to the router, not LiteLLM directly, so rules 1-5 apply to
+# everything entered through the UI. Data volume on truenas-iscsi; the DB (workspace
+# models, config rows) lives there, so losing the volume loses those settings.
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
@@ -39,8 +39,27 @@ spec:
               value: http://llm-router.llm.svc.cluster.local:8085/v1
             - name: OPENAI_API_KEY
               value: sk-router-unused
-            # RAG embeddings: use the cluster's bge-m3 service instead of letting the UI
-            # download and run its own sentence-transformers model on CPU.
+            - name: ENABLE_OLLAMA_API
+              value: "false"
+            # 32+ chars, required by this build for signing session tokens.
+            - name: WEBUI_SECRET_KEY
+              value: 6f2d9c1b8a4e3705d1c9b6f4e8a2705314cd9e7b2a6f
+            - name: WEBUI_URL
+              value: https://chat.home
+            # 0.13 stores config in webui.db and only seeds from env on first boot.
+            - name: ENABLE_PERSISTENT_CONFIG
+              value: "false"
+            - name: ENABLE_WEB_SEARCH
+              value: "true"
+            - name: WEB_SEARCH_ENGINE
+              value: searxng
+            - name: SEARXNG_QUERY_URL
+              value: http://searxng.search.svc.cluster.local:8080/search?q=<query>
+            - name: WEB_SEARCH_RESULT_COUNT
+              value: "3"
+            - name: WEB_SEARCH_CONCURRENT_REQUESTS
+              value: "1"
+            # RAG embeddings from the cluster bge-m3 service.
             - name: RAG_EMBEDDING_ENGINE
               value: openai
             - name: RAG_OPENAI_API_BASE_URL
@@ -49,14 +68,7 @@ spec:
               value: sk-local-unused
             - name: RAG_EMBEDDING_MODEL
               value: bge-m3
-            # 0.13 stores config in webui.db and only seeds from env on first boot, so
-            # env changes were ignored (web search never appeared in /api/config).
-            # Env is authoritative here, matching the GitOps flow for the rest of the stack.
-            - name: ENABLE_PERSISTENT_CONFIG
-              value: "false"
-            # Image generation: ComfyUI runs natively on the P1000 VM (VM 114, :8188),
-            # with SD1.5. The 5060 Ti has no spare VRAM (coder holds 15.6/16.3 GB), so image
-            # work lives on the 4 GB Pascal card instead of time-sharing the main GPU.
+            # Images render on the P1000 (VM 114) via ComfyUI; the 5060 Ti stays on the LLM.
             - name: ENABLE_IMAGE_GENERATION
               value: "true"
             - name: IMAGE_GENERATION_ENGINE
@@ -65,19 +77,45 @@ spec:
               value: http://192.168.12.245:8188
             - name: IMAGE_GENERATION_MODEL
               value: v1-5-pruned-emaonly-fp16.safetensors
-            # ComfyUI workflow (SD1.5 fp16, 512px) + the node map that injects the
-            # prompt/size/steps/seed. Without the map Open WebUI posts the template as-is
-            # and ComfyUI 400s on an empty prompt.
+            - name: IMAGE_SIZE
+              value: 512x512
             - name: COMFYUI_WORKFLOW
               value: |
                 {"1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "v1-5-pruned-emaonly-fp16.safetensors"}}, "2": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["1", 1]}}, "3": {"class_type": "CLIPTextEncode", "inputs": {"text": "blurry, low quality", "clip": ["1", 1]}}, "4": {"class_type": "EmptyLatentImage", "inputs": {"width": 512, "height": 512, "batch_size": 1}}, "5": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 20, "cfg": 7.0, "sampler_name": "euler", "scheduler": "normal", "denoise": 1.0, "model": ["1", 0], "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0]}}, "6": {"class_type": "VAEDecode", "inputs": {"samples": ["5", 0], "vae": ["1", 2]}}, "7": {"class_type": "SaveImage", "inputs": {"filename_prefix": "webui", "images": ["6", 0]}}}
             - name: COMFYUI_WORKFLOW_NODES
               value: |
                 [{"type": "prompt", "node_ids": ["2"], "key": "text"}, {"type": "negative_prompt", "node_ids": ["3"], "key": "text"}, {"type": "width", "node_ids": ["4"], "key": "width"}, {"type": "height", "node_ids": ["4"], "key": "height"}, {"type": "steps", "node_ids": ["5"], "key": "steps"}, {"type": "seed", "node_ids": ["5"], "key": "seed"}]
-            - name: IMAGE_SIZE
-              value: 512x512
-            # Chat-triggered image generation only runs when function_calling is
-            # "legacy": otherwise Open WebUI expects the model to call an image tool
-            # itself, which a local coder model does not do unprompted.
+            # Chat-triggered image generation requires legacy tool handling.
             - name: DEFAULT_MODEL_PARAMS
               value: '{"function_calling": "legacy"}'
+          volumeMounts:
+            - name: data
+              mountPath: /app/backend/data
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 40
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 100m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: openwebui-data
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: open-webui
+  namespace: llm
+spec:
+  selector:
+    app: open-webui
+  ports:
+    - port: 8080
+      targetPort: 8080
