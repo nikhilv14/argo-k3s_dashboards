@@ -20,6 +20,10 @@ from fastapi.responses import JSONResponse, StreamingResponse
 
 LITELLM = os.environ.get("LITELLM_BASE", "http://litellm.llm.svc.cluster.local:4000/v1")
 # embeddings: P1000 GPU first, CPU pod if the card/VM stops answering
+CODER_URL = os.environ.get("CODER_URL", "http://192.168.12.243:8081")
+# auto mode: local coder only while it is idle and the conversation is short enough
+# to leave room for the reply (n_ctx is 65536, so 54000 leaves ~11k for output)
+AUTO_MAX_TOKENS = int(os.environ.get("AUTO_MAX_TOKENS", "54000"))
 EMBED_PRIMARY = os.environ.get("EMBED_PRIMARY", "http://192.168.12.245:8090")
 EMBED_FALLBACK = os.environ.get("EMBED_FALLBACK", "http://llm-embed-cpu.llm.svc.cluster.local:8082")
 API_KEY = os.environ.get("LITELLM_KEY", "")
@@ -116,13 +120,35 @@ async def judge(messages, turns):
     return LOCAL  # single local tier; kept for the ambiguous-shape path
 
 
-def decide(messages, tools=None, requested=None):
+async def coder_state():
+    """'idle' | 'busy' | 'down' — is the local 27B free right now?"""
+    try:
+        async with httpx.AsyncClient(timeout=2.5) as c:
+            r = await c.get(f"{CODER_URL}/slots")
+        slots = r.json()
+        if any(s.get("is_processing") for s in slots if isinstance(s, dict)):
+            return "busy"
+        return "idle"
+    except Exception:
+        return "down"
+
+
+def decide(messages, tools=None, requested=None, coder=None):
     """Return (model, rule, reason).
 
     An explicit model choice wins: if the caller asked for "cloud" or "coder"
     (Open WebUI's model picker), honour it instead of re-deciding. The
     deterministic rules only apply to requests that do not name a model.
     """
+    if requested in ("auto", "Auto"):
+        tokens = est_tokens(messages, tools)
+        if tokens > AUTO_MAX_TOKENS:
+            return ("cloud", "auto-long", f"{tokens} tok > {AUTO_MAX_TOKENS} limit")
+        if coder == "busy":
+            return ("cloud", "auto-busy", "local coder busy (hermes/opencode or another chat)")
+        if coder == "down":
+            return ("cloud", "auto-down", "local coder unreachable")
+        return (LOCAL, "auto-local", f"{tokens} tok, coder idle")
     if requested in ("cloud", "cloud-nous"):
         return ("cloud", "explicit-cloud", "client selected cloud")
     if requested in ("coder", "coder-27b", LOCAL):
@@ -192,7 +218,14 @@ async def models():
     async with httpx.AsyncClient(timeout=30) as c:
         r = await c.get(f"{LITELLM}/models", headers=headers)
     try:
-        return JSONResponse(status_code=r.status_code, content=r.json())
+        data = r.json()
+        ids = {m.get("id") for m in data.get("data", []) if isinstance(m, dict)}
+        if "auto" not in ids:
+            data.setdefault("data", []).append({
+                "id": "auto", "object": "model", "created": 0,
+                "owned_by": "router",
+            })
+        return JSONResponse(status_code=r.status_code, content=data)
     except ValueError:
         return JSONResponse(status_code=502, content={"error": "upstream returned non-JSON",
                                                       "upstream_status": r.status_code})
@@ -226,7 +259,8 @@ async def chat(request: Request):
     # pictures are routed locally. If that projector is ever removed, this path will
     # surface the upstream error verbatim rather than silently guessing.
     requested = body.get("model")
-    model, rule, reason = decide(messages, body.get("tools"), requested)
+    coder = await coder_state() if requested in ("auto", "Auto") else None
+    model, rule, reason = decide(messages, body.get("tools"), requested, coder)
     # one line per decision: tells us which model the client asked for and what we did
     print(f"ROUTE requested={requested!r} -> {model} rule={rule} ({reason}) "
           f"stream={bool(body.get('stream'))} tools={len(body.get('tools') or [])}",
