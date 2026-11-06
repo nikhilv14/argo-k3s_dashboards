@@ -111,8 +111,17 @@ async def judge(messages, turns):
     return "coder"  # single local tier; kept for the ambiguous-shape path
 
 
-def decide(messages, tools=None):
-    """Return (model, rule, reason). Deterministic rules first."""
+def decide(messages, tools=None, requested=None):
+    """Return (model, rule, reason).
+
+    An explicit model choice wins: if the caller asked for "cloud" or "coder"
+    (Open WebUI's model picker), honour it instead of re-deciding. The
+    deterministic rules only apply to requests that do not name a model.
+    """
+    if requested in ("cloud",):
+        return ("cloud", "explicit-cloud", "client selected cloud")
+    if requested in ("coder", "coder-27b"):
+        return ("coder", "explicit-coder", "client selected coder")
     tokens = est_tokens(messages, tools)
     turns = sum(1 for m in messages if m.get("role") == "user")
     attached = has_attachment(messages)
@@ -192,7 +201,7 @@ async def chat(request: Request):
     # The coder runs with an mmproj projector (llama-coder.service on the GPU VM), so
     # pictures are routed locally. If that projector is ever removed, this path will
     # surface the upstream error verbatim rather than silently guessing.
-    model, rule, reason = decide(messages, body.get("tools"))
+    model, rule, reason = decide(messages, body.get("tools"), body.get("model"))
 
     if model is None:
         model = await judge(messages, sum(1 for m in messages if m.get("role") == "user"))
