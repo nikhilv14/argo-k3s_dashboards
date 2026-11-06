@@ -203,7 +203,12 @@ async def chat(request: Request):
     # The coder runs with an mmproj projector (llama-coder.service on the GPU VM), so
     # pictures are routed locally. If that projector is ever removed, this path will
     # surface the upstream error verbatim rather than silently guessing.
-    model, rule, reason = decide(messages, body.get("tools"), body.get("model"))
+    requested = body.get("model")
+    model, rule, reason = decide(messages, body.get("tools"), requested)
+    # one line per decision: tells us which model the client asked for and what we did
+    print(f"ROUTE requested={requested!r} -> {model} rule={rule} ({reason}) "
+          f"stream={bool(body.get('stream'))} tools={len(body.get('tools') or [])}",
+          flush=True)
 
     if model is None:
         model = await judge(messages, sum(1 for m in messages if m.get("role") == "user"))
