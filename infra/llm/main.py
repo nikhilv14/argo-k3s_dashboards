@@ -120,7 +120,7 @@ def decide(messages, tools=None, requested=None):
     (Open WebUI's model picker), honour it instead of re-deciding. The
     deterministic rules only apply to requests that do not name a model.
     """
-    if requested in ("cloud",):
+    if requested in ("cloud", "cloud-nous"):
         return ("cloud", "explicit-cloud", "client selected cloud")
     if requested in ("coder", "coder-27b", LOCAL):
         return (LOCAL, "explicit-coder", "client selected the local model")
