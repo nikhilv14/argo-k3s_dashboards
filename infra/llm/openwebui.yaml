@@ -81,6 +81,10 @@ spec:
             # itself, which a local coder model does not do unprompted.
             - name: DEFAULT_MODEL_PARAMS
               value: '{"function_calling": "legacy"}'
+            # Hide the raw connection model from the picker so the list is unambiguous:
+            # only the "Coder 27B" workspace model (legacy tool handling) and "cloud" show.
+            - name: OPENAI_API_CONFIGS
+              value: '{"0": {"enable": true, "model_ids": ["cloud"]}}'
             - name: ENABLE_WEB_SEARCH
               value: "true"
             - name: WEB_SEARCH_ENGINE
