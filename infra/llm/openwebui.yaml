@@ -52,6 +52,12 @@ spec:
             # 0.13 stores config in webui.db and only seeds from env on first boot.
             - name: ENABLE_PERSISTENT_CONFIG
               value: "false"
+            # Housekeeping calls (chat titles, tags, web-search query generation) fall
+            # back to the first connection model when TASK_MODEL is empty - which meant a
+            # 27B forward pass over 8 cores per message even on a cloud chat. Send them
+            # to the cloud model instead so cloud traffic stays entirely off-box.
+            - name: TASK_MODEL
+              value: cloud
             - name: ENABLE_WEB_SEARCH
               value: "true"
             - name: WEB_SEARCH_ENGINE
