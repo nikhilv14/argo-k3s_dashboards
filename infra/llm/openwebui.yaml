@@ -58,6 +58,12 @@ spec:
             # to the cloud model instead so cloud traffic stays entirely off-box.
             - name: TASK_MODEL
               value: cloud
+            # Web search was embedding every fetched page into a per-user vector
+            # collection (web-search-<user>-...), which pinned the bge-m3 CPU server at
+            # ~5.7 cores for minutes after each search. Bypass it: inject the text
+            # straight into the prompt instead of vectorising it.
+            - name: BYPASS_WEB_SEARCH_EMBEDDING_AND_RETRIEVAL
+              value: "true"
             - name: ENABLE_WEB_SEARCH
               value: "true"
             - name: WEB_SEARCH_ENGINE
