@@ -19,6 +19,9 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 LITELLM = os.environ.get("LITELLM_BASE", "http://litellm.llm.svc.cluster.local:4000/v1")
+# embeddings: P1000 GPU first, CPU pod if the card/VM stops answering
+EMBED_PRIMARY = os.environ.get("EMBED_PRIMARY", "http://192.168.12.245:8090")
+EMBED_FALLBACK = os.environ.get("EMBED_FALLBACK", "http://llm-embed-cpu.llm.svc.cluster.local:8082")
 API_KEY = os.environ.get("LITELLM_KEY", "")
 CLOUD_MODEL = os.environ.get("CLOUD_MODEL", "cloud")
 # LiteLLM alias for the local 27B on the 5060 Ti
@@ -193,6 +196,25 @@ async def models():
     except ValueError:
         return JSONResponse(status_code=502, content={"error": "upstream returned non-JSON",
                                                       "upstream_status": r.status_code})
+
+
+@app.post("/v1/embeddings")
+async def embeddings(request: Request):
+    """Proxy embeddings with failover: P1000 GPU -> CPU pod."""
+    raw = await request.body()
+    headers = {"Content-Type": "application/json"}
+    for name, base in (("gpu", EMBED_PRIMARY), ("cpu", EMBED_FALLBACK)):
+        try:
+            async with httpx.AsyncClient(timeout=120) as c:
+                r = await c.post(f"{base}/v1/embeddings", content=raw, headers=headers)
+            if r.status_code == 200:
+                if name == "cpu":
+                    print("EMBED fallback used (gpu unavailable)", flush=True)
+                return JSONResponse(r.json(), headers={"X-Embed-Backend": name})
+            print(f"EMBED {name} -> HTTP {r.status_code}", flush=True)
+        except Exception as e:
+            print(f"EMBED {name} -> {type(e).__name__}: {str(e)[:80]}", flush=True)
+    return JSONResponse({"error": "all embedding backends failed"}, status_code=503)
 
 
 @app.post("/v1/chat/completions")

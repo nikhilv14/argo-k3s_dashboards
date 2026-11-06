@@ -1,34 +1,79 @@
-# bge-m3 embeddings on the P1000 GPU (VM 114, 192.168.12.245:8090).
-# Was a CPU pod on the k3s worker: 732 ms/request and 5-6 cores during a document
-# ingest. On the P1000 it is 232 ms and leaves the worker's CPU alone. ComfyUI runs
-# with --disable-smart-memory so the two share the 4 GB card without evicting each other.
+# Embeddings, primary = P1000 GPU (VM 114, 192.168.12.245:8090, llama-embed-gpu.service)
+#          fallback = this CPU pod, used only when the P1000 stops answering.
+# The router proxies /v1/embeddings and does the failover, so Open WebUI has one URL.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llm-embed-cpu
+  namespace: llm
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: llm-embed-cpu
+  template:
+    metadata:
+      labels:
+        app: llm-embed-cpu
+    spec:
+      initContainers:
+        - name: fetch-model
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - wget -q -O /models/bge-m3-Q8_0.gguf https://huggingface.co/gpustack/bge-m3-GGUF/resolve/main/bge-m3-Q8_0.gguf
+          volumeMounts:
+            - name: models
+              mountPath: /models
+      containers:
+        - name: embed
+          image: ghcr.io/ggml-org/llama.cpp:server
+          args:
+            - --model
+            - /models/bge-m3-Q8_0.gguf
+            - --embeddings
+            - --host
+            - 0.0.0.0
+            - --port
+            - "8082"
+            - -c
+            - "8192"
+            # only 4 threads: this box also runs the 27B, and the fallback should not
+            # starve it the way the old 6-thread pod did
+            - --threads
+            - "4"
+            - --parallel
+            - "2"
+          ports:
+            - containerPort: 8082
+          volumeMounts:
+            - name: models
+              mountPath: /models
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8082
+            initialDelaySeconds: 30
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+            limits:
+              memory: 3Gi
+      volumes:
+        - name: models
+          emptyDir: {}
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: llm-embed
+  name: llm-embed-cpu
   namespace: llm
 spec:
+  selector:
+    app: llm-embed-cpu
   ports:
-    - name: http
-      port: 8082
-      targetPort: 8090
-      protocol: TCP
----
-apiVersion: discovery.k8s.io/v1
-kind: EndpointSlice
-metadata:
-  name: llm-embed-manual
-  namespace: llm
-  labels:
-    kubernetes.io/service-name: llm-embed
-    endpointslice.kubernetes.io/managed-by: user
-addressType: IPv4
-ports:
-  - name: http
-    port: 8090
-    protocol: TCP
-endpoints:
-  - addresses:
-      - 192.168.12.245
-    conditions:
-      ready: true
+    - port: 8082
+      targetPort: 8082

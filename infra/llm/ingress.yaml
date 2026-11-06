@@ -76,9 +76,9 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: llm-embed
+                name: llm-router
                 port:
-                  number: 8082
+                  number: 8085
   tls:
     - hosts:
         - embed.home
