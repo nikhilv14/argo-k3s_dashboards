@@ -24,7 +24,10 @@ spec:
             - name: SEARXNG_BASE_URL
               value: http://searxng.search.svc.cluster.local:8080/
             - name: SEARXNG_SECRET
-              value: change-me-homelab
+              valueFrom:
+                secretKeyRef:
+                  name: searxng-secret
+                  key: SEARXNG_SECRET
             - name: UWSGI_WORKERS
               value: "2"
           volumeMounts:

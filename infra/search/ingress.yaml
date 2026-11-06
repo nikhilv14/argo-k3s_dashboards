@@ -19,7 +19,18 @@ spec:
                 name: searxng
                 port:
                   number: 8080
+    - host: search.daemonagent.net
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: searxng
+                port:
+                  number: 8080
   tls:
     - hosts:
         - search.home
+        - search.daemonagent.net
       secretName: searxng-tls

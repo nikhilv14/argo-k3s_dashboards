@@ -4,6 +4,7 @@ namespace: search
 resources:
   - namespace.yaml
   - searxng.yaml
+  - searxng-sealed.yaml
   - ingress.yaml
 configMapGenerator:
   - name: searxng-settings

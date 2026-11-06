@@ -1,0 +1,15 @@
+---
+# Rotated SEARXNG_SECRET (was the literal default "change-me-homelab").
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  name: searxng-secret
+  namespace: search
+spec:
+  encryptedData:
+    SEARXNG_SECRET: AgAA/fYII1ncFKX1EzSBGZLjLuXiR7pMGilW4xnqAaP9javNKShmRNhpLMjo/RdtFg5eSXdd615Qao/KMV3xBbvYwt2ZPiioGziIQoTIvz8wIgrYbc/SbbQUtpQcIhUyM+Cm4iO2jRE3PENYDKew12gWLZjrj+xRnSjs+jy+HitQMqcgJF0JdfV/HoYTf3qtgNUjx47qRcfhU/y08Olfnm/HNxCXCYUZ1gwWQ++fkTgfzY761exrGkxV6uXgIbLO2Jqx+1f2H3Re9nKYShWKmzeqtFSddgqhhI8UDU6Aq1JHlbREkNEBZXRnjoF0M8y/iLE52mkhFmp09oZZGWi0S8GTk6gnPmCTS9n7euEvIJP7aGbuMGsBn/a5NMpZvKFH/inaZT3OkZXhFdRL1djPZqCm/gFcV1fvwFzilWKnWGyIxSai7DVyrzLjQldxqKqzuIeprxF/aZkzG9w8wSd8y+CEGwOmqU7k6TluYff8oruRRDLgH/n1e6fkCLkY/jUESxRsoyKomCRCmuEP/0k4+8G8aCtRYRqEQoItrH12SY8Fe6L3dGSZFx9M+0b2qryfHFhN3a828DTNNnnFa88hapUBdUKdMmlPRN/PBToPA+0MS7R53R1BUfdKI1GG3A0uUp5wIZxyegTJjPs0XjlYDCBTIp3iCjmvcIo7IYg/Lu/0I4qt6fsx8h85HVa01Rd0Cjf38u9dAL9IC8oTohblPgbT6V9iDtcOcDCxF9aWRDllEe9Lns4eJsGISsq+YOM4fT0WKxq1bVfqRJSqo7gVHh7cMw==
+  template:
+    metadata:
+      name: searxng-secret
+      namespace: search
+    type: Opaque
