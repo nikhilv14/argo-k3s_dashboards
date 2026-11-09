@@ -90,6 +90,12 @@ grafana:
   # password and no extra Google OAuth client to manage.
   # Local admin login stays enabled as break-glass (do NOT set auto_login).
   grafana.ini:
+    server:
+      # Without an explicit root_url Grafana builds the OAuth redirect_uri from
+      # http://localhost:3000 (its default domain), which Hydra rejects. Pinning
+      # the public host makes /login/generic_oauth -> https://<public>/login/... .
+      # grafana.home still serves the UI; only absolute links point public.
+      root_url: https://grafana.daemonagent.net/
     auth.generic_oauth:
       enabled: true
       name: Google
