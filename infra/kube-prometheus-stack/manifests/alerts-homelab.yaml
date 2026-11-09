@@ -126,23 +126,31 @@ spec:
             summary: "PVE exporter target {{ $labels.job }} down"
             description: "Prometheus cannot scrape {{ $labels.job }} for 10 minutes; PVE metrics stale."
         - alert: PVENodeDown
-          expr: pve_up{id=~"node/.*"} == 0
+          # max by (id): all three pve-exporters (201/220/130) scrape the whole
+          # cluster, so the raw series exists once per exporter and every event
+          # used to fire 3 identical alerts / 3 emails.
+          expr: max by (id) (pve_up{id=~"node/.*"}) == 0
           for: 5m
           labels:
             severity: critical
           annotations:
             summary: "Proxmox node {{ $labels.id }} is down"
         - alert: PVENodeUptimeReset
-          expr: pve_uptime_seconds{id=~"node/.*"} < 300
-          for: 0m
+          # Informational: real node loss is covered by PVENodeDown / K3sNodeDown.
+          # severity=info is routed to the "null" receiver, so planned reboots stay
+          # visible in the Alertmanager UI without paging. for: 5m (not 0m) — the
+          # <300s condition only holds for ~5 minutes, so a longer `for` would
+          # suppress the alert entirely.
+          expr: max by (id) (pve_uptime_seconds{id=~"node/.*"}) < 300
+          for: 5m
           labels:
-            severity: warning
+            severity: info
           annotations:
             summary: "Proxmox node {{ $labels.id }} rebooted"
         - alert: PVEGuestDown
           # Ignore list: lxc/100 and lxc/106 are intentionally decommissioned
           # (kept stopped on purpose); lxc/104 is still monitored.
-          expr: pve_up{id=~"qemu/.*|lxc/.*",id!~"lxc/(100|106)"} == 0
+          expr: max by (id) (pve_up{id=~"qemu/.*|lxc/.*",id!~"lxc/(100|106)"}) == 0
           for: 10m
           labels:
             severity: critical
@@ -159,20 +167,25 @@ spec:
             summary: "PVE storage {{ $labels.id }} >90% full"
         - alert: PVENodeMemoryHigh
           expr: |
-            pve_memory_usage_bytes{id=~"node/.*"} / pve_memory_size_bytes{id=~"node/.*"} > 0.90
+            max by (id) (pve_memory_usage_bytes{id=~"node/.*"} / pve_memory_size_bytes{id=~"node/.*"}) > 0.90
           for: 15m
           labels:
             severity: warning
           annotations:
             summary: "Proxmox node {{ $labels.id }} memory >90% used"
         - alert: PVENotBackedUpGuests
-          expr: max(pve_not_backed_up_total) > 0
-          for: 0m
+          # Change-based, not standing: with `> 0` this fired forever on the 11
+          # permanently-uncovered guests and mailed every 12h. Now it only fires
+          # while the uncovered count is higher than it was 6h ago, i.e. when a
+          # guest loses backup coverage. The absolute number stays on the Homelab
+          # dashboard and in the Alertmanager UI.
+          expr: max(pve_not_backed_up_total) > max(pve_not_backed_up_total offset 6h)
+          for: 15m
           labels:
             severity: warning
           annotations:
-            summary: "{{ $value }} Proxmox guests have no backup job coverage"
-            description: "pve_not_backed_up_total reports guests not matched by any vzdump schedule."
+            summary: "Proxmox guest backup coverage regressed ({{ $value }} uncovered)"
+            description: "pve_not_backed_up_total rose within the last 6h: a guest is no longer matched by any vzdump schedule."
         - alert: LogIngestStalled
           expr: sum(increase(loki_distributor_lines_received_total[15m])) == 0
           for: 15m
