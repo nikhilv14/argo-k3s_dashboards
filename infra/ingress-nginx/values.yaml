@@ -1,4 +1,16 @@
+# ingress-nginx 4.14.1. The controller runs as a DaemonSet: the DMZ path
+# (Caddy -> 10.250.250.161/162:443) depends on a hostPort listener existing on
+# EVERY node, which a Deployment cannot provide. Previously the repo rendered a
+# Deployment while an unmanaged DaemonSet (hostPort 80/443, all nodes) carried
+# the traffic — ArgoCD watched the harmless object and reported Healthy while
+# the real controller was crashlooping on k3s-worker-z690 (2026-11-09).
 controller:
+  kind: DaemonSet
+  # Every node must run a replica; do NOT narrow this to always-on nodes.
+  nodeSelector:
+    kubernetes.io/os: linux
+  hostPort:
+    enabled: true
   # Ubuntu 26.04 / newer runc stacks cri-containerd.apparmor.d with
   # "&unconfined" per exec, and AppArmor then denies signal delivery between
   # processes of the SAME container. Symptom on k3s-worker-z690 (2026-11-09):
@@ -11,9 +23,6 @@ controller:
   ingressClassResource:
     controllerValue: k8s.io/ingress-nginx
     default: true
-  nodeSelector:
-    homelab/node-type: always-on
-  replicaCount: 1
   resources:
     limits:
       cpu: 200m
