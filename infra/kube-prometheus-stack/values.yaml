@@ -83,6 +83,32 @@ grafana:
       # Pod total was 602Mi against a 512Mi limit (3 restarts); the two
       # dashboard/datasource sidecars share the pod budget.
       memory: 768Mi
+  # Google sign-in via the homelab SSO: Grafana is an OIDC client of Hydra
+  # (client "grafana", created 2026-11-09, redirect /login/generic_oauth).
+  # Hydra federates the Google identity through auth.daemonagent.net, so the
+  # same Google account that opens dash/recipes opens Grafana - no second
+  # password and no extra Google OAuth client to manage.
+  # Local admin login stays enabled as break-glass (do NOT set auto_login).
+  grafana.ini:
+    auth.generic_oauth:
+      enabled: true
+      name: Google
+      allow_sign_up: true
+      client_id: grafana
+      # real value comes from the SealedSecret grafana-oauth via envValueFrom
+      scopes: openid email profile
+      auth_url: https://auth.daemonagent.net/oauth2/auth
+      token_url: https://auth.daemonagent.net/oauth2/token
+      api_url: https://auth.daemonagent.net/userinfo
+      use_pkce: false
+      allow_assign_grafana_admin: true
+      # only the owner gets GrafanaAdmin; everyone else lands as Viewer
+      role_attribute_path: "email == 'nikhil14aug@gmail.com' && 'GrafanaAdmin' || 'Viewer'"
+  envValueFrom:
+    GF_AUTH_GENERIC_OAUTH_CLIENT_SECRET:
+      secretKeyRef:
+        name: grafana-oauth
+        key: client-secret
   persistence:
     enabled: true
     storageClassName: truenas-iscsi
