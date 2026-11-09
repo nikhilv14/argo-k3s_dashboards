@@ -71,6 +71,10 @@ grafana:
   # the old pod first. Seen on the 2026-11-09 password rotation.
   deploymentStrategy:
     type: Recreate
+    # Must be nulled explicitly: the live Deployment still carries the
+    # rollingUpdate block from the previous strategy and SSA would otherwise
+    # keep it, and the API rejects rollingUpdate alongside type: Recreate.
+    rollingUpdate: null
   resources:
     requests:
       cpu: 50m
