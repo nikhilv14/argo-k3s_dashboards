@@ -1,4 +1,13 @@
 controller:
+  # Ubuntu 26.04 / newer runc stacks cri-containerd.apparmor.d with
+  # "&unconfined" per exec, and AppArmor then denies signal delivery between
+  # processes of the SAME container. Symptom on k3s-worker-z690 (2026-11-09):
+  # "nginx: [alert] kill(16, 1) failed (13: Permission denied)" on every
+  # config reload -> liveness 500 -> crashloop; metallb-speaker HUP denied too.
+  # Pod-level Unconfined removes the stacked profile.
+  podSecurityContext:
+    appArmorProfile:
+      type: Unconfined
   ingressClassResource:
     controllerValue: k8s.io/ingress-nginx
     default: true
