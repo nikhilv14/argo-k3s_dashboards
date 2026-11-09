@@ -13,9 +13,22 @@ spec:
   tls:
     - hosts:
         - grafana.home
+        - grafana.daemonagent.net
       secretName: grafana-tls
   rules:
     - host: grafana.home
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: kube-prometheus-stack-grafana
+                port:
+                  number: 80
+    # Public host. Reached through the da_tunnel -> Caddy (ory_auth) vhost on
+    # the DMZ ingress, which proxies to ingress-nginx with this Host header.
+    - host: grafana.daemonagent.net
       http:
         paths:
           - path: /
