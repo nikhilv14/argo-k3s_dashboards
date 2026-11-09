@@ -96,6 +96,15 @@ grafana:
       # the public host makes /login/generic_oauth -> https://<public>/login/... .
       # grafana.home still serves the UI; only absolute links point public.
       root_url: https://grafana.daemonagent.net/
+    auth:
+      # Grafana only falls back to an email lookup when this is on. Without it,
+      # a returning OAuth user is looked up by (login|email) from the claims and
+      # the very first login can leave the row unreachable -> "unable to create
+      # user: user not found" on every retry.
+      oauth_allow_insecure_email_lookup: true
+    log:
+      # temporary: prove what claims Grafana resolves for the OAuth user
+      filters: oauth.generic_oauth:debug user.sync:debug
     auth.generic_oauth:
       enabled: true
       name: Google
