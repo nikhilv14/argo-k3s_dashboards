@@ -103,9 +103,11 @@ grafana:
       client_id: grafana
       # real value comes from the SealedSecret grafana-oauth via envValueFrom
       scopes: openid email profile
-      auth_url: https://auth.daemonagent.net/oauth2/auth
-      token_url: https://auth.daemonagent.net/oauth2/token
-      api_url: https://auth.daemonagent.net/userinfo
+      # Hydra's public vhost is hydra.daemonagent.net (same issuer Open WebUI uses);
+      # auth.daemonagent.net serves kratos-ui and 404s on /oauth2/*.
+      auth_url: https://hydra.daemonagent.net/oauth2/auth
+      token_url: https://hydra.daemonagent.net/oauth2/token
+      api_url: https://hydra.daemonagent.net/userinfo
       use_pkce: false
       allow_assign_grafana_admin: true
       # only the owner gets GrafanaAdmin; everyone else lands as Viewer
