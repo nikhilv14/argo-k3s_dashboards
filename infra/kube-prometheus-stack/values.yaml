@@ -58,19 +58,27 @@ alertmanager:
     configSecret: alertmanager-homelab-config
 
 grafana:
-  # Admin credentials live in the SealedSecret argocd-sealed grafana-admin
-  # (infra/kube-prometheus-stack/admin-secret.yaml). Rotate by re-sealing that
-  # secret and restarting Grafana; do NOT put the password here in plain text
-  # (a plaintext value also breaks the dashboard sidecar when it drifts from
-  # the live UI password).
+  # Admin credentials live in the SealedSecret grafana-admin
+  # (infra/kube-prometheus-stack/manifests/admin-secret.yaml, ArgoCD-managed).
+  # Rotate by re-sealing that secret; do NOT put the password here in plain
+  # text (a plaintext value also breaks the dashboard sidecar when it drifts
+  # from the live UI password).
   admin:
     existingSecret: grafana-admin
+  # The 5Gi PVC is truenas-iscsi (ReadWriteOnce). A RollingUpdate starts the new
+  # pod on another node before the old one releases the volume, so the rollout
+  # hangs on Multi-Attach until the old pod is force-deleted. Recreate drains
+  # the old pod first. Seen on the 2026-11-09 password rotation.
+  deploymentStrategy:
+    type: Recreate
   resources:
     requests:
       cpu: 50m
       memory: 256Mi
     limits:
-      memory: 512Mi
+      # Pod total was 602Mi against a 512Mi limit (3 restarts); the two
+      # dashboard/datasource sidecars share the pod budget.
+      memory: 768Mi
   persistence:
     enabled: true
     storageClassName: truenas-iscsi
