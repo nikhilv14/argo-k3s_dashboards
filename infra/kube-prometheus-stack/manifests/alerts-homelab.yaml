@@ -166,13 +166,17 @@ spec:
           annotations:
             summary: "PVE storage {{ $labels.id }} >90% full"
         - alert: PVENodeMemoryHigh
+          # 0.95, not 0.90: all three PVE nodes sit structurally high (31 GiB hosts
+          # with 16+14 GiB guests), so 90% paged permanently. 95% is the level
+          # where the hypervisor actually starts hurting.
           expr: |
-            max by (id) (pve_memory_usage_bytes{id=~"node/.*"} / pve_memory_size_bytes{id=~"node/.*"}) > 0.90
+            max by (id) (pve_memory_usage_bytes{id=~"node/.*"} / pve_memory_size_bytes{id=~"node/.*"}) > 0.95
           for: 15m
           labels:
             severity: warning
           annotations:
-            summary: "Proxmox node {{ $labels.id }} memory >90% used"
+            summary: "Proxmox node {{ $labels.id }} memory >95% used"
+            description: "{{ $labels.id }} has been above 95% memory for 15 minutes; guests are at risk of host OOM."
         - alert: PVENotBackedUpGuests
           # Change-based, not standing: with `> 0` this fired forever on the 11
           # permanently-uncovered guests and mailed every 12h. Now it only fires
