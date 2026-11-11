@@ -1,5 +1,6 @@
-# Perplexity-mode web search for the local models. No node pin: the Z690 worker
-# runs it fine at 100m CPU (the old HP-only pinning is gone on purpose).
+# Perplexity-mode web search for the local models. Soft preference for the Z690
+# worker (the node with the most idle capacity): preferred, not required, so it
+# still schedules elsewhere if Z690 is cordoned/unavailable.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -15,6 +16,16 @@ spec:
       labels:
         app: searxng
     spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - k3s-worker-z690
       containers:
         - name: searxng
           image: docker.io/searxng/searxng:latest
