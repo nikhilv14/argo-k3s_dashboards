@@ -8,25 +8,8 @@ service:
 
 metricsScraper:
   enabled: true
-  nodeSelector:
-    kubernetes.io/hostname: k3s-worker-z690
 
 kong:
   proxy:
     http:
       enabled: true
-
-# Rebalance: the Z690 worker has the most idle capacity (10 cores, ~1% CPU).
-# Hard nodeSelector because this chart exposes no affinity knob for these pods.
-# Non-critical UI components only, so Pending-while-Z690-down is acceptable.
-auth:
-  nodeSelector:
-    kubernetes.io/hostname: k3s-worker-z690
-
-api:
-  nodeSelector:
-    kubernetes.io/hostname: k3s-worker-z690
-
-web:
-  nodeSelector:
-    kubernetes.io/hostname: k3s-worker-z690
