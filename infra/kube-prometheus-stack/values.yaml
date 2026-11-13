@@ -8,6 +8,10 @@
 prometheus:
   prometheusSpec:
     retention: 30d
+    # Hard cap so a month of blocks can never fill the volume: 30d at the measured
+    # ~1.6 GiB/day is ~48 GiB, and compaction needs scratch space on the same PVC.
+    # 50GB keeps ~10 GiB free on the 60Gi volume (Prometheus reads GB as 2^30).
+    retentionSize: 50GB
     scrapeInterval: 30s
     resources:
       requests:
@@ -27,7 +31,12 @@ prometheus:
           accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              storage: 20Gi
+              # 60Gi = one month of blocks (~48 GiB at the measured 1.6 GiB/day) plus
+              # compaction/WAL headroom, paired with retentionSize above. The live PVC was
+              # expanded online (20Gi -> 60Gi); the zvol on TrueNAS grew with it. StatefulSet
+              # volumeClaimTemplates are immutable on this cluster, so the operator recreates
+              # the STS to adopt this value — the bound PVC is reused, not replaced.
+              storage: 60Gi
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
