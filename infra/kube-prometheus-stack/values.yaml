@@ -40,6 +40,10 @@ prometheus:
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
+    # Probes are plain monitoring.coreos.com/v1 objects in manifests/ with no
+    # `release:` label, so without this the operator's default selector (nil ->
+    # release=<helm release>) drops them and probe_success never appears.
+    probeSelectorNilUsesHelmValues: false
 
 alertmanager:
   alertmanagerSpec:
