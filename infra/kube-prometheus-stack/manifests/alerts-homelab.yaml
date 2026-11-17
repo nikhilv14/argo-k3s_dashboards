@@ -296,7 +296,9 @@ spec:
           annotations:
             summary: "Router memory >90% used"
         - alert: OpenWrtHighLoad
-          expr: node_load1{job="openwrt"} / count(node_cpu_seconds_total{job="openwrt",mode="idle"}) > 2
+          expr: |
+            node_load1{job="openwrt"}
+              / on() group_left count(node_cpu_seconds_total{job="openwrt",mode="idle"}) > 2
           for: 15m
           labels:
             severity: warning
