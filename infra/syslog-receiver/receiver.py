@@ -24,6 +24,11 @@ LISTEN = os.environ.get("LISTEN", "0.0.0.0:514")
 HEALTH_PORT = int(os.environ.get("HEALTH_PORT", "9094"))
 BATCH_SECS = float(os.environ.get("BATCH_SECS", "1.0"))
 MAX_LINE = int(os.environ.get("MAX_LINE", "8192"))
+DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
+
+def dbg(*a):
+    if DEBUG:
+        print("[dbg]", *a, flush=True)
 
 _queue = []
 _lock = threading.Lock()
@@ -101,6 +106,7 @@ def pusher():
 class UDPHandler(socketserver.BaseRequestHandler):
     def handle(self):
         data = self.request[0]
+        dbg("udp packet", len(data), "bytes from", self.client_address)
         try:
             enqueue(data.decode("utf-8", "replace").rstrip("\n"), self.client_address[0])
         except Exception as e:
@@ -129,6 +135,7 @@ def serve(protocol):
     else:
         socketserver.TCPServer.allow_reuse_address = True
         srv = socketserver.ThreadingTCPServer((host, int(port)), TCPHandler)
+    dbg("serving", protocol, "on", LISTEN)
     srv.serve_forever()
 
 
