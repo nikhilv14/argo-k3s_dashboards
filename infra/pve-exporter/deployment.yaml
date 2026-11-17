@@ -1,7 +1,7 @@
 # One exporter per PVE node so each node is an independent scrape target:
 # a node outage shows as a down target instead of a silent gap. No VIP/DNS
 # aliasing for the exporter on purpose.
-# Cluster: beast-cluster (pve=192.168.12.201, pve-nuc10=192.168.12.220, pve-hp-g9=192.168.12.130)
+# Cluster: beast-cluster (pve=192.168.12.201, pve-hp-g9=192.168.12.220, pve-nuc10=192.168.12.130)
 # Auth: nikhil@pve!grafana-config (sealed in sealed-secret.yaml)
 apiVersion: apps/v1
 kind: Deployment
@@ -91,18 +91,18 @@ metadata:
   namespace: monitoring
   labels:
     app.kubernetes.io/name: pve-exporter
-    pve.node: pve-nuc10
+    pve.node: pve-hp-g9
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: pve-exporter
-      pve.node: pve-nuc10
+      pve.node: pve-hp-g9
   template:
     metadata:
       labels:
         app.kubernetes.io/name: pve-exporter
-        pve.node: pve-nuc10
+        pve.node: pve-hp-g9
     spec:
       affinity:
         nodeAffinity:
@@ -155,11 +155,11 @@ metadata:
   namespace: monitoring
   labels:
     app.kubernetes.io/name: pve-exporter
-    pve.node: pve-nuc10
+    pve.node: pve-hp-g9
 spec:
   selector:
     app.kubernetes.io/name: pve-exporter
-    pve.node: pve-nuc10
+    pve.node: pve-hp-g9
   ports:
     - name: metrics
       port: 9221
@@ -172,18 +172,18 @@ metadata:
   namespace: monitoring
   labels:
     app.kubernetes.io/name: pve-exporter
-    pve.node: pve-hp-g9
+    pve.node: pve-nuc10
 spec:
   replicas: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: pve-exporter
-      pve.node: pve-hp-g9
+      pve.node: pve-nuc10
   template:
     metadata:
       labels:
         app.kubernetes.io/name: pve-exporter
-        pve.node: pve-hp-g9
+        pve.node: pve-nuc10
     spec:
       affinity:
         nodeAffinity:
@@ -236,11 +236,11 @@ metadata:
   namespace: monitoring
   labels:
     app.kubernetes.io/name: pve-exporter
-    pve.node: pve-hp-g9
+    pve.node: pve-nuc10
 spec:
   selector:
     app.kubernetes.io/name: pve-exporter
-    pve.node: pve-hp-g9
+    pve.node: pve-nuc10
   ports:
     - name: metrics
       port: 9221

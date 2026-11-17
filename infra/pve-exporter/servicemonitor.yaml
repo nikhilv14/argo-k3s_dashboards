@@ -31,12 +31,12 @@ metadata:
   name: pve-exporter-220
   namespace: monitoring
   labels:
-    pve.node: pve-nuc10
+    pve.node: pve-hp-g9
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: pve-exporter
-      pve.node: pve-nuc10
+      pve.node: pve-hp-g9
   endpoints:
     - port: metrics
       interval: 60s
@@ -58,12 +58,12 @@ metadata:
   name: pve-exporter-130
   namespace: monitoring
   labels:
-    pve.node: pve-hp-g9
+    pve.node: pve-nuc10
 spec:
   selector:
     matchLabels:
       app.kubernetes.io/name: pve-exporter
-      pve.node: pve-hp-g9
+      pve.node: pve-nuc10
   endpoints:
     - port: metrics
       interval: 60s
