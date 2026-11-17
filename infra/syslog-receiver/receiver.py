@@ -83,7 +83,9 @@ def pusher():
     while True:
         time.sleep(BATCH_SECS)
         with _lock:
-            batch, _queue[:] = _queue, []
+            # rebind, never `batch, _queue[:] = _queue, []` - that assigns batch
+            # to the SAME list object and then clears it, so every batch is empty
+            batch, _queue = _queue, []
         if not batch:
             continue
         streams = {}
