@@ -80,6 +80,9 @@ def enqueue(line, peer):
 
 
 def pusher():
+    # _queue is module state; without this declaration the rebind below makes it
+    # a local and the thread dies on UnboundLocalError before pushing anything.
+    global _queue
     while True:
         time.sleep(BATCH_SECS)
         with _lock:
