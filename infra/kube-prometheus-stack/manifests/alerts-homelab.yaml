@@ -269,3 +269,36 @@ spec:
             severity: warning
           annotations:
             summary: "PVE vzdump job on {{ $labels.node }} finished with 'job errors'"
+    # ---------- router (OpenWrt, scraped directly) ----------
+    - name: homelab.router
+      rules:
+        - alert: OpenWrtDown
+          expr: up{job="openwrt"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "OpenWrt router metrics endpoint unreachable"
+            description: "Prometheus cannot scrape 192.168.12.1:9100 (prometheus-node-exporter-lua). Router down, or the exporter/firewall changed."
+        - alert: OpenWrtConntrackHigh
+          expr: node_nf_conntrack_entries / node_nf_conntrack_entries_limit > 0.8
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Router conntrack table >80% full"
+            description: "Near exhaustion, new connections will be dropped. Check for a NAT/Port-forward storm or a client opening many flows."
+        - alert: OpenWrtHighMemory
+          expr: (1 - node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes) > 0.9
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Router memory >90% used"
+        - alert: OpenWrtHighLoad
+          expr: node_load1 / count(node_cpu_seconds_total{mode="idle"}) > 2
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Router load {{ $value }} per CPU over 15m"

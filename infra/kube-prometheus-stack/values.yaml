@@ -37,6 +37,16 @@ prometheus:
               # volumeClaimTemplates are immutable on this cluster, so the operator recreates
               # the STS to adopt this value — the bound PVC is reused, not replaced.
               storage: 60Gi
+    # External (non-Kubernetes) targets. The router is scraped directly from
+    # Prometheus; the syslog receiver in front of it is exposed via MetalLB.
+    additionalScrapeConfigs:
+      - job_name: openwrt
+        scrape_interval: 30s
+        static_configs:
+          - targets: ['192.168.12.1:9100']
+            labels:
+              host: openwrt
+              role: router
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false
