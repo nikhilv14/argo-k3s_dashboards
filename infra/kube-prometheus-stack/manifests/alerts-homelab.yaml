@@ -253,42 +253,19 @@ spec:
             pve_backup_job_last_status == 0
               and on(id) pve_backup_job_enabled == 1
               and on(id) pve_backup_job_last_run_timestamp_seconds > 0
+              and on(id) pve_backup_job_missed_run == 0
           for: 20m
           labels:
             severity: critical
           annotations:
-            summary: "PVE backup job {{ $labels.id }} ({{ $labels.schedule }}) last run had failures"
-            description: "At least one guest task in the job ended with an error status."
+            summary: "PVE backup job {{ $labels.id }} ({{ $labels.schedule }}) had failures"
+            description: "At least one vzdump task in the last slot ended in an error status."
         - alert: PVEBackupJobRunErrors
           # the job-level task (id='') reports aggregate "job errors", which is
-          # invisible in the per-guest tasks and in pve_not_backed_up_*
+          # invisible per guest and in pve_not_backed_up_*
           expr: pve_backup_jobrun_status == 0
           for: 30m
           labels:
             severity: warning
           annotations:
             summary: "PVE vzdump job on {{ $labels.node }} finished with 'job errors'"
-        - alert: PVEBackupStale
-          # the exporter publishes the deadline (last_run + 1.5*interval) as a
-          # timestamp so this is a plain scalar comparison, not vector matching
-          # on a label string (PromQL cannot use label values numerically).
-          expr: |
-            (time() > pve_backup_job_deadline_timestamp_seconds)
-              and pve_backup_job_deadline_timestamp_seconds > 0
-              and on(id) pve_backup_job_enabled == 1
-          for: 1h
-          labels:
-            severity: warning
-          annotations:
-            summary: "PVE backup job {{ $labels.id }} overdue ({{ $labels.schedule }})"
-            description: "No successful run within 1.5x the job's schedule interval."
-        - alert: PVEBackupGuestStale
-          expr: |
-            (time() > pve_backup_guest_deadline_timestamp_seconds)
-              and pve_backup_guest_last_run_timestamp_seconds > 0
-          for: 1h
-          labels:
-            severity: warning
-          annotations:
-            summary: "Guest {{ $labels.vmid }} has no recent backup"
-            description: "Last vzdump task for this guest is older than 1.5x its job interval."

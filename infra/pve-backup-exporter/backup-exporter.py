@@ -11,7 +11,8 @@ job configs and the vzdump task history and exposes, per job and per guest:
   pve_backup_job_next_run_timestamp_seconds{id}
   pve_backup_guest_last_run_timestamp_seconds{vmid,interval}
   pve_backup_guest_last_status{vmid}          1 = OK, 0 = failed / job errors
-  pve_backup_*_deadline_timestamp_seconds     last_run + 1.5*interval (0 = never run)
+                                              (lower bound: PVE skips per-guest
+                                              tasks on some multi-guest runs)
   pve_backup_jobrun_status{node}              1 = last job-level task OK (catches
                                                 "job errors", which are reported on
                                                 the id='' task, not per guest)
@@ -98,6 +99,11 @@ def collect():
         out.append(f'pve_backup_job_next_run_timestamp_seconds{{{labels}}} '
                    f'{int(j.get("next-run") or 0)}')
 
+        # Status comes from the per-guest tasks only. PVE does not write a
+        # per-guest task for every multi-guest run, so this is a lower bound on
+        # freshness (dashboards use it) -- job *freshness* is deliberately not
+        # alerted here: the task model cannot attribute id='' aggregate tasks to
+        # a specific job without the schedules colliding (01:30 vs 02:00).
         mine = [t for t in tasks if str(t.get("id")) in vmids]
         if mine:
             newest = max(mine, key=lambda t: t.get("starttime", 0))
@@ -108,26 +114,7 @@ def collect():
         else:
             out.append(f'pve_backup_job_last_run_timestamp_seconds{{{labels}}} 0')
             out.append(f'pve_backup_job_last_status{{{labels}}} 0')
-        # numeric (not label) interval so PromQL can do `> 1.5 * interval`
         out.append(f'pve_backup_job_interval_seconds{{id="{id_}"}} {interval}')
-        # deadline = last_run + 1.5*interval, so the alert is a plain scalar
-        # comparison (`time() > metric`) instead of vector matching on a label
-        last_run = int(newest.get("starttime", 0)) if mine else 0
-        out.append(f'pve_backup_job_deadline_timestamp_seconds{{{labels}}} '
-                   f'{int(last_run + 1.5 * interval) if last_run else 0}')
-
-        for v in vmids:
-            vt = [t for t in tasks if str(t.get("id")) == v]
-            if not vt:
-                continue
-            newest = max(vt, key=lambda t: t.get("starttime", 0))
-            gl = f'vmid="{v}"'
-            out.append(f'pve_backup_guest_last_run_timestamp_seconds{{{gl}}} '
-                       f'{int(newest.get("starttime", 0))}')
-            out.append(f'pve_backup_guest_last_status{{{gl}}} {ok(newest.get("status"))}')
-            out.append(f'pve_backup_guest_interval_seconds{{{gl}}} {interval}')
-            out.append(f'pve_backup_guest_deadline_timestamp_seconds{{{gl}}} '
-                       f'{int(int(newest.get("starttime", 0)) + 1.5 * interval)}')
 
     # job-level tasks (id='') carry the aggregate status, including "job errors"
     for node in NODES:
