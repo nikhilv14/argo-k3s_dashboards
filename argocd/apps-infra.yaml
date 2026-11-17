@@ -384,3 +384,30 @@ spec:
     syncOptions:
       - ServerSideApply=true
       - CreateNamespace=true
+---
+# PVE backup-job exporter: last-run age + per-guest status (pve-exporter only
+# exposes "not backed up" membership, not timestamps, so a missed or failing
+# vzdump job was invisible).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: pve-backup-exporter
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+    targetRevision: main
+    path: infra/pve-backup-exporter
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true

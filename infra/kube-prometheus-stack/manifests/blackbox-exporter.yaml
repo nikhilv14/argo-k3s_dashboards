@@ -1,0 +1,229 @@
+# Blackbox probing: WAN reachability, gateway, PVE hosts, TrueNAS and the
+# Cloudflare-fronted public hosts. Probes are Prometheus Operator `Probe`
+# objects, so the operator renders the scrape configs and the targets show up
+# as `probe_success{job="blackbox-exporter",instance="..."}`.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: blackbox-exporter-config
+  namespace: monitoring
+data:
+  blackbox.yml: |
+    modules:
+      http_2xx:
+        prober: http
+        timeout: 10s
+        http:
+          method: GET
+          valid_status_codes: []
+          preferred_ip_protocol: ip4
+      http_2xx_insecure:
+        prober: http
+        timeout: 10s
+        http:
+          method: GET
+          valid_status_codes: []
+          preferred_ip_protocol: ip4
+          tls_config:
+            insecure_skip_verify: true
+      icmp:
+        prober: icmp
+        timeout: 5s
+        icmp:
+          preferred_ip_protocol: ip4
+      dns_daemonagent:
+        prober: dns
+        timeout: 5s
+        dns:
+          query_name: dash.daemonagent.net
+          query_type: A
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: blackbox-exporter
+    spec:
+      containers:
+        - name: blackbox-exporter
+          image: quay.io/prometheus/blackbox-exporter:v0.25.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - --config.file=/config/blackbox.yml
+            - --web.listen-address=:9115
+          ports:
+            - name: http
+              containerPort: 9115
+          resources:
+            requests:
+              cpu: 20m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /-/healthy
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          securityContext:
+            capabilities:
+              add: ["NET_RAW"]   # ICMP probes need raw sockets
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      volumes:
+        - name: config
+          configMap:
+            name: blackbox-exporter-config
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: blackbox-exporter
+  ports:
+    - name: http
+      port: 9115
+      targetPort: http
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: blackbox-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: blackbox-exporter
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: blackbox-exporter
+  endpoints:
+    - port: http
+      interval: 60s
+---
+# --- probes -------------------------------------------------------------
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: wan-ping
+  namespace: monitoring
+spec:
+  jobName: wan-ping
+  module: icmp
+  interval: 60s
+  scrapeTimeout: 30s
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - 1.1.1.1
+        - 8.8.8.8
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: gateway-ping
+  namespace: monitoring
+spec:
+  jobName: gateway-ping
+  module: icmp
+  interval: 60s
+  scrapeTimeout: 30s
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - 192.168.12.1
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: pve-hosts-ping
+  namespace: monitoring
+spec:
+  jobName: pve-hosts-ping
+  module: icmp
+  interval: 60s
+  scrapeTimeout: 30s
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - 192.168.12.201
+        - 192.168.12.220
+        - 192.168.12.130
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: truenas-https
+  namespace: monitoring
+spec:
+  jobName: truenas-https
+  module: http_2xx_insecure
+  interval: 120s
+  scrapeTimeout: 30s
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - https://192.168.12.50/
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: edge-https
+  namespace: monitoring
+spec:
+  jobName: edge-https
+  module: http_2xx
+  interval: 120s
+  scrapeTimeout: 30s
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - https://dash.daemonagent.net/
+        - https://auth.daemonagent.net/
+        - https://grafana.daemonagent.net/
+        - https://victron.daemonagent.net/
+        - https://photos.daemonagent.net/
+---
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: dns-resolve
+  namespace: monitoring
+spec:
+  jobName: dns-resolve
+  module: dns_daemonagent
+  interval: 120s
+  scrapeTimeout: 30s
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - 192.168.12.1

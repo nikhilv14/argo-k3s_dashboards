@@ -1,0 +1,95 @@
+# PVE backup-job exporter: last-run age + status for every vzdump job and guest.
+# The script is embedded in the ConfigMap (same pattern as pve-journal-collector);
+# backup-exporter.py in this directory is the readable source of truth.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pve-backup-exporter-script
+  namespace: monitoring
+data:
+  backup-exporter.py: "#!/usr/bin/env python3\n\"\"\"PVE backup-job exporter (stdlib only, python:3.12-alpine).\n\npve-exporter exposes `pve_not_backed_up_info` but no last-run timestamps, so a\nmissed or failed vzdump job is invisible. This polls the PVE API for the backup\njob configs and the vzdump task history and exposes, per job and per guest:\n\n  pve_backup_job_last_run_timestamp_seconds{id,schedule,storage,frequency,interval}\n  pve_backup_job_last_status{id}              1 = every guest task OK, 0 = any not OK\n  pve_backup_job_enabled{id}\n  pve_backup_job_next_run_timestamp_seconds{id}\n  pve_backup_guest_last_run_timestamp_seconds{vmid,interval}\n  pve_backup_guest_last_status{vmid}          1 = OK, 0 = failed / job errors\n  pve_backup_*_deadline_timestamp_seconds     last_run + 1.5*interval (0 = never run)\n  pve_backup_jobrun_status{node}              1 = last job-level task OK (catches\n                                                \"job errors\", which are reported on\n                                                the id='' task, not per guest)\n\nAuth reuses the pve-exporter token (secret pve-exporter, key PVE_TOKEN_VALUE).\n\"\"\"\nimport json\nimport os\nimport re\nimport ssl\nimport threading\nimport time\nimport urllib.request\nfrom http.server import BaseHTTPRequestHandler, HTTPServer\n\nPVE_HOST = os.environ.get(\"PVE_HOST\", \"192.168.12.201\")\nPVE_PORT = int(os.environ.get(\"PVE_PORT\", \"8006\"))\nPVE_USER = os.environ.get(\"PVE_USER\", \"nikhil@pve\")\nPVE_TOKEN_NAME = os.environ.get(\"PVE_TOKEN_NAME\", \"grafana\")\nPVE_TOKEN_VALUE = os.environ[\"PVE_TOKEN_VALUE\"]\nPVE_VERIFY_SSL = os.environ.get(\"PVE_VERIFY_SSL\", \"false\").lower() == \"true\"\nNODES = [n.strip() for n in os.environ.get(\"PVE_NODES\", \"pve,pve-nuc10,pve-hp-g9\").split(\",\") if n.strip()]\nPORT = int(os.environ.get(\"METRICS_PORT\", \"9222\"))\nREFRESH = int(os.environ.get(\"REFRESH_SECS\", \"60\"))\n\nAUTH = f\"PVEAPIToken={PVE_USER}!{PVE_TOKEN_NAME}={PVE_TOKEN_VALUE}\"\n_lock = threading.Lock()\nSTATE = {\"metrics\": b\"\", \"ts\": 0}\n\n\ndef http_json(path, timeout=15):\n    ctx = ssl.create_default_context()\n    if not PVE_VERIFY_SSL:\n        ctx.check_hostname = False\n        ctx.verify_mode = ssl.CERT_NONE\n    req = urllib.request.Request(\n        f\"https://{PVE_HOST}:{PVE_PORT}/api2/json{path}\",\n        headers={\"Authorization\": AUTH, \"Accept\": \"application/json\"})\n    with urllib.request.urlopen(req, context=ctx, timeout=timeout) as resp:\n        data = resp.read()\n        if data[:2] == b\"\\x1f\\x8b\":\n            import gzip\n            data = gzip.decompress(data)\n        return json.loads(data)[\"data\"]\n\n\ndef parse_schedule(schedule):\n    \"\"\"-> (frequency_label, interval_seconds).\"\"\"\n    s = (schedule or \"\").strip()\n    if re.match(r\"^\\*-\\*-\\d+\", s):\n        return \"monthly\", 30 * 86400\n    m = re.match(r\"^[a-z]{3}\\s\", s)\n    if m:\n        return \"weekly\", 7 * 86400\n    if re.match(r\"^\\d{1,2}:\\d{2}\", s) or \"*\" in s:\n        return \"daily\", 86400\n    return \"unknown\", 86400\n\n\ndef ok(status):\n    return 1 if str(status).upper() == \"OK\" else 0\n\n\ndef collect():\n    jobs = http_json(\"/cluster/backup\") or []\n    tasks = []\n    for node in NODES:\n        try:\n            for t in http_json(f\"/nodes/{node}/tasks?limit=300\") or []:\n                if t.get(\"type\") == \"vzdump\":\n                    t[\"_node\"] = node\n                    tasks.append(t)\n        except Exception:\n            continue\n\n    out = []\n    for j in jobs:\n        freq, interval = parse_schedule(j.get(\"schedule\", \"\"))\n        vmids = [v.strip() for v in str(j.get(\"vmid\", \"\")).split(\",\") if v.strip()]\n        id_ = j[\"id\"]\n        labels = (f'id=\"{id_}\",schedule=\"{j.get(\"schedule\", \"\")}\",'\n                  f'storage=\"{j.get(\"storage\", \"\")}\",frequency=\"{freq}\",interval=\"{interval}\"')\n        out.append(f'pve_backup_job_enabled{{{labels}}} {1 if j.get(\"enabled\") == 1 else 0}')\n        out.append(f'pve_backup_job_next_run_timestamp_seconds{{{labels}}} '\n                   f'{int(j.get(\"next-run\") or 0)}')\n\n        mine = [t for t in tasks if str(t.get(\"id\")) in vmids]\n        if mine:\n            newest = max(mine, key=lambda t: t.get(\"starttime\", 0))\n            out.append(f'pve_backup_job_last_run_timestamp_seconds{{{labels}}} '\n                       f'{int(newest.get(\"starttime\", 0))}')\n            out.append(f'pve_backup_job_last_status{{{labels}}} '\n                       f'{1 if all(ok(t.get(\"status\")) for t in mine) else 0}')\n        else:\n            out.append(f'pve_backup_job_last_run_timestamp_seconds{{{labels}}} 0')\n            out.append(f'pve_backup_job_last_status{{{labels}}} 0')\n        # numeric (not label) interval so PromQL can do `> 1.5 * interval`\n        out.append(f'pve_backup_job_interval_seconds{{id=\"{id_}\"}} {interval}')\n        # deadline = last_run + 1.5*interval, so the alert is a plain scalar\n        # comparison (`time() > metric`) instead of vector matching on a label\n        last_run = int(newest.get(\"starttime\", 0)) if mine else 0\n        out.append(f'pve_backup_job_deadline_timestamp_seconds{{{labels}}} '\n                   f'{int(last_run + 1.5 * interval) if last_run else 0}')\n\n        for v in vmids:\n            vt = [t for t in tasks if str(t.get(\"id\")) == v]\n            if not vt:\n                continue\n            newest = max(vt, key=lambda t: t.get(\"starttime\", 0))\n            gl = f'vmid=\"{v}\"'\n            out.append(f'pve_backup_guest_last_run_timestamp_seconds{{{gl}}} '\n                       f'{int(newest.get(\"starttime\", 0))}')\n            out.append(f'pve_backup_guest_last_status{{{gl}}} {ok(newest.get(\"status\"))}')\n            out.append(f'pve_backup_guest_interval_seconds{{{gl}}} {interval}')\n            out.append(f'pve_backup_guest_deadline_timestamp_seconds{{{gl}}} '\n                       f'{int(int(newest.get(\"starttime\", 0)) + 1.5 * interval)}')\n\n    # job-level tasks (id='') carry the aggregate status, including \"job errors\"\n    for node in NODES:\n        agg = [t for t in tasks if t[\"_node\"] == node and str(t.get(\"id\")) == \"\"]\n        if agg:\n            newest = max(agg, key=lambda t: t.get(\"starttime\", 0))\n            out.append(f'pve_backup_jobrun_status{{node=\"{node}\"}} {ok(newest.get(\"status\"))}')\n\n    body = (\"\\n\".join(out) + \"\\n\").encode()\n    with _lock:\n        STATE[\"metrics\"] = body\n        STATE[\"ts\"] = int(time.time())\n\n\nclass H(BaseHTTPRequestHandler):\n    def do_GET(self):\n        with _lock:\n            body = STATE[\"metrics\"]\n        self.send_response(200 if body else 503)\n        self.send_header(\"Content-Type\", \"text/plain; version=0.0.4\")\n        self.end_headers()\n        self.wfile.write(body or b\"\")\n\n    def log_message(self, format, *args):  # noqa: A002 - stdlib signature\n        pass\n\n\ndef refresher():\n    while True:\n        try:\n            collect()\n        except Exception as e:\n            print(f\"[refresh] {type(e).__name__}: {e}\", flush=True)\n        time.sleep(REFRESH)\n\n\nif __name__ == \"__main__\":\n    collect()\n    threading.Thread(target=refresher, daemon=True).start()\n    print(f\"pve-backup-exporter on :{PORT}, nodes={NODES}\", flush=True)\n    HTTPServer((\"0.0.0.0\", PORT), H).serve_forever()\n"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pve-backup-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-backup-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: pve-backup-exporter
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: pve-backup-exporter
+    spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              preference:
+                matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: In
+                    values:
+                      - k3s-worker-z690
+      containers:
+        - name: exporter
+          image: python:3.12-alpine
+          command: ["python3", "-u", "/opt/backup-exporter.py"]
+          env:
+            - name: PVE_HOST
+              value: 192.168.12.201
+            - name: PVE_USER
+              value: nikhil@pve
+            - name: PVE_TOKEN_NAME
+              value: grafana
+            - name: PVE_TOKEN_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: pve-exporter
+                  key: PVE_TOKEN_VALUE
+            - name: PVE_VERIFY_SSL
+              value: "false"
+            - name: PVE_NODES
+              value: pve,pve-nuc10,pve-hp-g9
+          ports:
+            - name: metrics
+              containerPort: 9222
+          resources:
+            requests:
+              cpu: 10m
+              memory: 64Mi
+            limits:
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: metrics
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          volumeMounts:
+            - name: script
+              mountPath: /opt
+      volumes:
+        - name: script
+          configMap:
+            name: pve-backup-exporter-script
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pve-backup-exporter
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/name: pve-backup-exporter
+spec:
+  selector:
+    app.kubernetes.io/name: pve-backup-exporter
+  ports:
+    - name: metrics
+      port: 9222
+      targetPort: metrics

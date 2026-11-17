@@ -197,3 +197,98 @@ spec:
             severity: warning
           annotations:
             summary: "Loki has received no log lines for 15 minutes"
+    # ---------- network / blackbox ----------
+    - name: homelab.network
+      rules:
+        - alert: ProbeTargetDown
+          # probe_success==0 means the probe ran and the target failed;
+          # probe_success absent means we are not scraping (BlindMonitor below).
+          expr: probe_success == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "{{ $labels.job }} probe failing for {{ $labels.instance }}"
+            description: "blackbox probe {{ $labels.job }} to {{ $labels.instance }} has failed for 5 minutes."
+        - alert: ProbeHighLatency
+          expr: probe_duration_seconds > 2
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.job }} slow: {{ $value }}s to {{ $labels.instance }}"
+        - alert: ProbeSSLCertExpiringSoon
+          expr: probe_ssl_earliest_cert_expiry_seconds - time() < 21 * 86400
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "TLS cert for {{ $labels.instance }} expires in <21 days"
+    # ---------- certificates ----------
+    - name: homelab.certificates
+      rules:
+        - alert: CertExpiringSoon
+          expr: certmanager_certificate_expiration_timestamp_seconds - time() < 30 * 86400
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Certificate {{ $labels.namespace }}/{{ $labels.name }} expires in <30 days"
+            description: "cert-manager reports {{ $value | humanizeDuration }} to expiry; renewal has not happened yet."
+        - alert: CertNotReady
+          expr: certmanager_certificate_ready_condition{condition="True"} == 0
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Certificate {{ $labels.namespace }}/{{ $labels.name }} is not Ready"
+            description: "Issuance/renewal has been failing for 30 minutes."
+    # ---------- proxmox backups ----------
+    - name: homelab.pve-backup
+      rules:
+        - alert: PVEBackupJobFailed
+          # require last_run > 0 so a job that has never run (e.g. monthly)
+          # does not page before its first execution
+          expr: |
+            pve_backup_job_last_status == 0
+              and on(id) pve_backup_job_enabled == 1
+              and on(id) pve_backup_job_last_run_timestamp_seconds > 0
+          for: 20m
+          labels:
+            severity: critical
+          annotations:
+            summary: "PVE backup job {{ $labels.id }} ({{ $labels.schedule }}) last run had failures"
+            description: "At least one guest task in the job ended with an error status."
+        - alert: PVEBackupJobRunErrors
+          # the job-level task (id='') reports aggregate "job errors", which is
+          # invisible in the per-guest tasks and in pve_not_backed_up_*
+          expr: pve_backup_jobrun_status == 0
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVE vzdump job on {{ $labels.node }} finished with 'job errors'"
+        - alert: PVEBackupStale
+          # the exporter publishes the deadline (last_run + 1.5*interval) as a
+          # timestamp so this is a plain scalar comparison, not vector matching
+          # on a label string (PromQL cannot use label values numerically).
+          expr: |
+            (time() > pve_backup_job_deadline_timestamp_seconds)
+              and pve_backup_job_deadline_timestamp_seconds > 0
+              and on(id) pve_backup_job_enabled == 1
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVE backup job {{ $labels.id }} overdue ({{ $labels.schedule }})"
+            description: "No successful run within 1.5x the job's schedule interval."
+        - alert: PVEBackupGuestStale
+          expr: |
+            (time() > pve_backup_guest_deadline_timestamp_seconds)
+              and pve_backup_guest_last_run_timestamp_seconds > 0
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "Guest {{ $labels.vmid }} has no recent backup"
+            description: "Last vzdump task for this guest is older than 1.5x its job interval."

@@ -1,0 +1,21 @@
+# cert-manager exposes certificate metrics on :9402 (Certificate expiry,
+# Ready condition, ACME request counters). Nothing scraped it, so an expiring
+# cert or a stuck issuance was invisible.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: cert-manager
+  namespace: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: cert-manager
+      app.kubernetes.io/component: controller
+      app.kubernetes.io/instance: cert-manager
+  namespaceSelector:
+    matchNames:
+      - cert-manager
+  endpoints:
+    - port: http-metrics
+      interval: 60s
+      path: /metrics
