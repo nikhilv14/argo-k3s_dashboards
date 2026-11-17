@@ -12,7 +12,7 @@ data:
     modules:
       http_2xx:
         prober: http
-        timeout: 10s
+        timeout: 5s
         http:
           method: GET
           valid_status_codes: []
@@ -140,23 +140,6 @@ spec:
 apiVersion: monitoring.coreos.com/v1
 kind: Probe
 metadata:
-  name: gateway-ping
-  namespace: monitoring
-spec:
-  jobName: gateway-ping
-  module: icmp
-  interval: 60s
-  scrapeTimeout: 30s
-  prober:
-    url: blackbox-exporter.monitoring.svc:9115
-  targets:
-    staticConfig:
-      static:
-        - 192.168.12.1
----
-apiVersion: monitoring.coreos.com/v1
-kind: Probe
-metadata:
   name: pve-hosts-ping
   namespace: monitoring
 spec:
@@ -199,7 +182,10 @@ spec:
   jobName: edge-https
   module: http_2xx
   interval: 120s
-  scrapeTimeout: 30s
+  # 5 URLs are probed sequentially inside one scrape; a short per-probe timeout
+  # plus a generous scrape timeout keeps slow hosts from dropping out of the
+  # series set entirely.
+  scrapeTimeout: 90s
   prober:
     url: blackbox-exporter.monitoring.svc:9115
   targets:
