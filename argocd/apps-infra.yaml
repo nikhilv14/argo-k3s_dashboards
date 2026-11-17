@@ -411,3 +411,29 @@ spec:
     syncOptions:
       - ServerSideApply=true
       - CreateNamespace=true
+---
+# Syslog relay (UDP/TCP 514 -> Loki) behind a MetalLB VIP, so OpenWrt logd has a
+# single stable remote target that survives a node loss.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: syslog-receiver
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+    targetRevision: main
+    path: infra/syslog-receiver
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+      - CreateNamespace=true
