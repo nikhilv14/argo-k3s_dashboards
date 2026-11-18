@@ -7,6 +7,10 @@
 # (argo-immich-tieredstorage/monitoring, etc.) don't need stack-specific labels.
 prometheus:
   prometheusSpec:
+    # Extra secrets mounted at /etc/prometheus/secrets/<name>/ so scrape jobs can
+    # read credentials with `credentials_file` instead of putting them in git.
+    secrets:
+      - ha-prometheus
     retention: 30d
     # Hard cap so a month of blocks can never fill the volume: 30d at the measured
     # ~1.6 GiB/day is ~48 GiB, and compaction needs scratch space on the same PVC.
@@ -61,6 +65,26 @@ prometheus:
             labels:
               app: jellyfin
               host: media-stack
+      # Home Assistant (HAOS appliance, odroid-m1s). Its prometheus integration
+      # is enabled with auth required, so the scrape presents the long-lived
+      # token from the ha-prometheus secret (mounted above). ~2.9k series:
+      # per-entity availability, state-change counters, automation triggers.
+      - job_name: home-assistant
+        scrape_interval: 60s
+        metrics_path: /api/prometheus
+        authorization:
+          type: Bearer
+          credentials_file: /etc/prometheus/secrets/ha-prometheus/token
+        # Drop the OpenMetrics `_created` timestamps (563 series of pure noise).
+        metric_relabelings:
+          - source_labels: [__name__]
+            regex: "hass_(state_change|automation_triggered_count)_created"
+            action: drop
+        static_configs:
+          - targets: ['192.168.12.112:8123']
+            labels:
+              app: home-assistant
+              host: haos-m1s
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false

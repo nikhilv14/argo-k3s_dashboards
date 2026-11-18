@@ -1,0 +1,15 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: ha-prometheus
+  namespace: monitoring
+spec:
+  encryptedData:
+    token: AgBl0E3er2rIw0xE2hKFSoBtq7R+tfLgQspML2WrL/Mxi6QLx4MjDFN5ryw+Mn9zbrd2fQyKikSpXf14gUvBHgoTJ45IzLmPqYXNK3KrTgTlaP17c/36xpl3thVjP8B8t710b7yV1ryZf4E0Fmlrnaofk9f9JQneKao8o7J/Tw/Y/3Yoefn1UCYerJ3xMKhG5JjmF8Tn4IP+c7z12I7cV122PF0AbfWs40F3grcp6he53RRkgn/HYBMQNujRYmygH70K/llFNRK0BGtlu6hIKz3ZWGCaijwIZCduJlATNujXLzXEU8V3kIhQKunUPl4lgbgUOmXDgEt2OlVCYlFp5trqIz2Jk13as4rXXXwsMHiDB2c8dOKl/74AX7BTvpEXYo+olyCJx7fOsRxoBwWjZwgfwu912UZpww6f38LIeUUIZQnNhCx50l3kY0vDDsI99hJtKVhzegr6XuJgi5U1NYxfI7I3Hrk6rKwalr4O6A8s4vR6+TpM07JqOjrSaBTVFQWg7arlBbEhMYLnb3ETza/xczdVONSYtnuyZqOWAw3FwfiRCzxoTUS/RDRygP+nUmrJ+n99MAbysOvYpdtDsSEY/KSNzH6d2KSRUQr2XkzUMw32aiIcmJ+aUPyNFWKhbLjBBjcHOdne01Ga21At5mi+//iRSf2+7+HTT909DYE22ij7gHXhaEiEC1yiM4UXX8jF8Q3W9IY6Wj4zS3SrZpI72Cbx2sU4hgBQdvH0ZwrGx9/rSn8W+3q4S9o2VsYcRIncEH0S4wHk6gYOfLP3+13OGE+p38x4b/dnufUYH/oWgIQQOpfzmkC5Ps2uWsBwRDDPtf97JpSoJdKmffrd8W4mDdNVG9BBaJiW+lOU+lb1diHordEX8KfJVLshpXNBrrW9SUoAVMVf1K1t3oxZ3xfeWNRaJ5GzZjfXlFd6LJ28m99+aXp/6ZY=
+  template:
+    metadata:
+      creationTimestamp: null
+      name: ha-prometheus
+      namespace: monitoring
