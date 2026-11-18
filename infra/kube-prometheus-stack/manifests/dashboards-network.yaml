@@ -372,7 +372,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum by (zone) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:\" [5m]))"
+              "expr": "sum by (zone) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:.*SRC=(?<src>[^ ]+) DST=(?<dst>[^ ]+)\" | dst != \"255.255.255.255\" | dst !~ \"^ff02:\" | dst != \"192.168.12.1\" [5m]))"
             }
           ]
         },
@@ -393,7 +393,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(8, sum by (src) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject [^ ]+ in:.*SRC=(?<src>[^ ]+)\" [5m])))"
+              "expr": "topk(8, sum by (src) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:.*SRC=(?<src>[^ ]+) DST=(?<dst>[^ ]+)\" | dst != \"255.255.255.255\" | dst !~ \"^ff02:\" | dst != \"192.168.12.1\" [5m])))"
             }
           ]
         },
@@ -420,7 +420,7 @@ data:
         },
         {
           "id": 14,
-          "title": "Denied destinations / 5m (top)",
+          "title": "Denied destinations / 5m (top, noise filtered)",
           "type": "timeseries",
           "gridPos": {
             "h": 8,
@@ -435,7 +435,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(10, sum by (dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject [^ ]+ in:.*DST=(?<dst>[^ ]+)\" [5m])))"
+              "expr": "topk(10, sum by (dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:.*SRC=(?<src>[^ ]+) DST=(?<dst>[^ ]+)\" | dst != \"255.255.255.255\" | dst !~ \"^ff02:\" | dst != \"192.168.12.1\" [5m])))"
             }
           ]
         },
@@ -480,6 +480,92 @@ data:
             {
               "refId": "A",
               "expr": "topk(15, sum by (client) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | client != \"\" [1h])))",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 17,
+          "title": "Allowed new connections / 5m by source",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 56
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(8, sum by (src) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allow .*SRC=(?<src>[^ ]+) DST=(?<dst>[^ ]+) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" [5m])))"
+            }
+          ]
+        },
+        {
+          "id": 18,
+          "title": "Allowed new connections / 5m by destination",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 56
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(10, sum by (dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allow .*SRC=(?<src>[^ ]+) DST=(?<dst>[^ ]+) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" [5m])))"
+            }
+          ]
+        },
+        {
+          "id": 19,
+          "title": "Allowed by destination port / 5m",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 64
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(10, sum by (dport) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allow .*SRC=(?<src>[^ ]+) DST=(?<dst>[^ ]+) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" [5m])))"
+            }
+          ]
+        },
+        {
+          "id": 20,
+          "title": "Top allowed source -> destination (1h)",
+          "type": "table",
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 64
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(20, sum by (src, dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allow .*SRC=(?<src>[^ ]+) DST=(?<dst>[^ ]+) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" [1h])))",
               "instant": true,
               "range": false
             }
