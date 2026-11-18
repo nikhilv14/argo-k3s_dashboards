@@ -8,7 +8,7 @@
 # volume, the loki helm chart rejects ruler replicas alongside single-binary, and
 # single-binary exposes no query-frontend gRPC endpoint for remote evaluation.
 #
-# Generated from log_alert_bridge.py and rules.json - edit those, not this file.
+# Generated from log_alert_bridge.py and rules.logql - edit those, not this file.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -164,7 +164,7 @@ data:
         threading.Thread(target=refresher, daemon=True).start()
         print(f"log-alert bridge on :{PORT}, rules={[r['name'] for r in STATE['rules']]}", flush=True)
         HTTPServer(("0.0.0.0", PORT), H).serve_forever()
-  rules.json: |
+  rules.logql: |
     {
       "_comment": "LogQL evaluated by infra/log-alert-exporter/log_alert_bridge.py. Each entry becomes log_alert_value{rule=\"name\"}; thresholds, `for` and routing live in infra/kube-prometheus-stack/manifests/log-alerts.yaml. Every expr must be a metric query. This Loki's `| regexp` does not drop lines, so a severity/status is captured into a named group and filtered with `| x != \"\"`. Status is matched at end-of-line: the uvicorn access log ends with the code, and matching 5xx anywhere also catches millisecond timestamps like `.500`.",
       "rules": [
@@ -264,7 +264,7 @@ spec:
           configMap:
             name: log-alert-exporter
             items:
-              - key: rules.json
+              - key: rules.logql
                 path: rules.json
 ---
 apiVersion: v1
