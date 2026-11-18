@@ -240,7 +240,7 @@ data:
         },
         {
           "id": 8,
-          "title": "Repository call rate (all operations)",
+          "title": "Repository call rate \u2014 key operations",
           "type": "timeseries",
           "gridPos": {
             "h": 8,
@@ -255,7 +255,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(rate({__name__=~\"immich_.*_duration_count\"}[15m]))",
+              "expr": "sum(rate(immich_asset_repository_get_time_duration_count[15m])) + sum(rate(immich_asset_repository_get_for_thumbnail_duration_count[15m])) + sum(rate(immich_album_repository_get_by_id_duration_count[15m])) + sum(rate(immich_person_repository_get_all_for_user_duration_count[15m])) + sum(rate(immich_job_repository_get_queue_duration_count[15m])) + sum(rate(immich_search_repository_search_metadata_duration_count[15m]))",
               "legendFormat": "ops/sec"
             }
           ]
