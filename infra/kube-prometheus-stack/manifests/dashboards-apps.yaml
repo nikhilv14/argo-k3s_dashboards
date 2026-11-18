@@ -1,0 +1,336 @@
+# "Critical Apps" dashboard (immich, jellyfin), auto-loaded by the Grafana sidecar.
+# Add panels per app as they are onboarded - see critical-app-onboarding.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-apps
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  apps-critical.json: |
+    {
+      "title": "Critical Apps",
+      "uid": "apps-critical",
+      "tags": [
+        "homelab",
+        "apps",
+        "critical"
+      ],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "templating": {
+        "list": []
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Immich API",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_success{job=\"immich-http\"}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "background",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 2,
+          "title": "Jellyfin health",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_success{job=\"jellyfin-http\"}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "background",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 3,
+          "title": "Immich DB",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "pg_up{namespace=\"immich\"}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "background",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 4,
+          "title": "Jellyfin HTTP latency",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_duration_seconds{job=\"jellyfin-http\"}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            }
+          },
+          "options": {
+            "colorMode": "value",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 5,
+          "title": "Immich replicas available",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 4
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kube_deployment_status_replicas_available{namespace=\"immich\"}",
+              "legendFormat": "{{deployment}}"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "Immich container restarts (15m)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 4
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "increase(kube_pod_container_status_restarts_total{namespace=\"immich\"}[15m])",
+              "legendFormat": "{{pod}}/{{container}}"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Immich DB active connections",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 12
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "pg_stat_activity_count{namespace=\"immich\",state=\"active\"}",
+              "legendFormat": "active"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "Immich PVC usage",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 12
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "100*kubelet_volume_stats_used_bytes{namespace=\"immich\"}/kubelet_volume_stats_capacity_bytes{namespace=\"immich\"}",
+              "legendFormat": "{{persistentvolumeclaim}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent"
+            }
+          }
+        },
+        {
+          "id": 9,
+          "title": "Immich errors",
+          "type": "logs",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 20
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "{namespace=\"immich\"} |~ \"(?i)error|fatal|exception\"",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true,
+            "dedupStrategy": "none"
+          }
+        },
+        {
+          "id": 10,
+          "title": "Jellyfin errors",
+          "type": "logs",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 20
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "{job=\"syslog\", host=\"media-stack\", app=\"jellyfin\"} |~ \"(?i)error|fail|exception\"",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true,
+            "dedupStrategy": "none"
+          }
+        }
+      ]
+    }
