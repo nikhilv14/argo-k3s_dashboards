@@ -502,7 +502,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(8, sum by (src) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allow .*SRC=(?<src>[^ ]+) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | src != \"\" | noise = \"\" [5m])))"
+              "expr": "topk(8, sum by (src) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allowIN=(?<in>[^ ]*) OUT=[^ ]* .*SRC=(?:(?<nsrc>192[.]168[.]12[.]1)|(?<src>[^ ]+)) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | in != \"\" | src != \"\" | noise = \"\" | nsrc = \"\" [5m])))"
             }
           ]
         },
@@ -523,7 +523,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(10, sum by (dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allow .*SRC=(?<src>[^ ]+) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | src != \"\" | noise = \"\" [5m])))"
+              "expr": "topk(10, sum by (dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allowIN=(?<in>[^ ]*) OUT=[^ ]* .*SRC=(?:(?<nsrc>192[.]168[.]12[.]1)|(?<src>[^ ]+)) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | in != \"\" | src != \"\" | noise = \"\" | nsrc = \"\" [5m])))"
             }
           ]
         },
@@ -544,7 +544,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(10, sum by (dport) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allow .*SRC=(?<src>[^ ]+) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | src != \"\" | noise = \"\" [5m])))"
+              "expr": "topk(10, sum by (dport) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allowIN=(?<in>[^ ]*) OUT=[^ ]* .*SRC=(?:(?<nsrc>192[.]168[.]12[.]1)|(?<src>[^ ]+)) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | in != \"\" | src != \"\" | noise = \"\" | nsrc = \"\" [5m])))"
             }
           ]
         },
@@ -565,7 +565,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(20, sum by (src, dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allow .*SRC=(?<src>[^ ]+) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | src != \"\" | noise = \"\" [1h])))",
+              "expr": "topk(20, sum by (src, dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allowIN=(?<in>[^ ]*) OUT=[^ ]* .*SRC=(?:(?<nsrc>192[.]168[.]12[.]1)|(?<src>[^ ]+)) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | in != \"\" | src != \"\" | noise = \"\" | nsrc = \"\" [1h])))",
               "instant": true,
               "range": false
             }
