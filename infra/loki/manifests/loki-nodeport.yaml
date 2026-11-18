@@ -1,15 +1,19 @@
-# NodePort front door for Proxmox VE hosts (outside the cluster) to push logs
-# into Loki. PVE-host promtail agents (see pve-hosts/) target any k3s node IP
-# on this port; traffic reaches the loki:3100 ClusterIP service.
+# Front door for hosts outside the cluster to push logs into Loki: the PVE
+# promtail agents (see pve-hosts/) and the Home Assistant Alloy add-on.
+# MetalLB gives it a stable LAN VIP (192.168.12.63) that survives any single
+# node going down; the NodePort 30100 is kept so existing PVE configs keep
+# working unchanged.
 apiVersion: v1
 kind: Service
 metadata:
   name: loki-nodeport
   namespace: monitoring
+  annotations:
+    metallb.universe.tf/loadBalancerIPs: 192.168.12.63
   labels:
     app.kubernetes.io/name: loki
 spec:
-  type: NodePort
+  type: LoadBalancer
   selector:
     app.kubernetes.io/name: loki
     app.kubernetes.io/instance: loki
