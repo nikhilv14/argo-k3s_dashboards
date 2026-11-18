@@ -27,7 +27,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: immich-exporter
-          image: ghcr.io/moond4rk/immich-exporter:v1.5.0
+          image: ghcr.io/moond4rk/immich-exporter:1.5.0
           imagePullPolicy: IfNotPresent
           env:
             - name: IMMICH_BASE_URL
