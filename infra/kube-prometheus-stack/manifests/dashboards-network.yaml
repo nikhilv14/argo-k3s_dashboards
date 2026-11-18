@@ -354,6 +354,136 @@ data:
             "wrapLogMessage": true,
             "dedupStrategy": "none"
           }
+        },
+        {
+          "id": 11,
+          "title": "Firewall denies / 5m by zone",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 30
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum by (zone) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:\" [5m]))"
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "title": "Firewall denies / 5m by source",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 30
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(8, sum by (src) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject [^ ]+ in:.*SRC=(?<src>[^ ]+)\" [5m])))"
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "title": "DNS queries / 5m by client",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 38
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(8, sum by (client) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" [5m])))"
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "title": "Denied destinations / 5m (top)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 38
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(10, sum by (dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject [^ ]+ in:.*DST=(?<dst>[^ ]+)\" [5m])))"
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "title": "Top queried domains (1h)",
+          "type": "table",
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 46
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(20, sum by (domain) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | domain != \"\" [1h])))",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 16,
+          "title": "Top DNS clients (1h)",
+          "type": "table",
+          "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 46
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(15, sum by (client) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | client != \"\" [1h])))",
+              "instant": true,
+              "range": false
+            }
+          ]
         }
       ]
     }
