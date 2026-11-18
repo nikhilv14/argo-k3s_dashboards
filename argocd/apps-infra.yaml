@@ -212,6 +212,11 @@ spec:
     - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
       targetRevision: main
       ref: values
+    # Extra plain manifests (the LAN front-door Service) that the loki chart
+    # does not own. Without this source the file in the repo is never applied.
+    - repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+      targetRevision: main
+      path: infra/loki/manifests
   destination:
     server: https://kubernetes.default.svc
     namespace: monitoring
