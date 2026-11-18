@@ -1,0 +1,154 @@
+# Critical-application onboarding (first two: immich, jellyfin).
+#
+# The contract every app must satisfy to be "onboarded" - see the
+# critical-app-onboarding skill for the checklist and per-app playbook:
+#   1. its logs reach Loki (k8s: promtail DaemonSet; CT/docker: the syslog relay)
+#   2. a liveness signal is scraped (ServiceMonitor / blackbox Probe)
+#   3. the failure modes below alert
+#   4. the ops agent has an allowlisted remediation or a report-only playbook
+#
+# ProbeTargetDown in alerts-homelab.yaml is `probe_success == 0`, so the two
+# Probes below are alerted automatically - no per-probe rule needed here.
+---
+# Immich's postgres has a postgres_exporter sidecar on the `metrics` port of the
+# immich-db Service; without this ServiceMonitor pg_up never appears.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: immich-db
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: apps-critical
+spec:
+  namespaceSelector:
+    matchNames: ["immich"]
+  selector:
+    matchLabels:
+      app: immich-db
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s
+---
+# Immich: hit the app's own health endpoint from inside the cluster (the public
+# URL redirects through the SSO, which would only prove the login page is up).
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: immich-http
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: apps-critical
+spec:
+  jobName: immich-http
+  interval: 60s
+  scrapeTimeout: 30s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://immich-server.immich.svc.cluster.local:2283/api/server/ping
+---
+# Jellyfin runs in CT104 `media-stack` (docker compose), not in k8s, so the
+# only scrapeable signal is HTTP. /health returns 200 when the server is up.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: jellyfin-http
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: apps-critical
+spec:
+  jobName: jellyfin-http
+  interval: 60s
+  scrapeTimeout: 30s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://192.168.12.142:8096/health
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: apps-critical
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: apps-critical
+spec:
+  groups:
+    - name: apps.critical
+      rules:
+        # --- generic k8s app health (add namespaces to the regex as apps land)
+        - alert: AppDeploymentUnavailable
+          expr: |
+            kube_deployment_status_replicas_unavailable{namespace=~"immich"} > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.deployment }} has {{ $value }} unavailable replica(s)"
+            description: "Deployment has been unable to keep its replicas up for 15 minutes."
+        - alert: AppPodCrashLooping
+          expr: |
+            increase(kube_pod_container_status_restarts_total{namespace=~"immich"}[15m]) > 3
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} restarting ({{ $value }} in 15m)"
+            description: "Container is restarting repeatedly; check its last logs before restarting the workload."
+        - alert: AppPodNotReady
+          expr: |
+            kube_pod_status_ready{condition="true",namespace=~"immich"} == 0
+              and on(namespace, pod) kube_pod_status_phase{phase="Running"} == 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }} Running but not Ready for 15m"
+            description: "Readiness probe failing; the app is not serving traffic."
+        - alert: AppContainerOOMKilled
+          expr: |
+            kube_pod_container_status_last_terminated_reason{reason="OOMKilled",namespace=~"immich"} == 1
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "{{ $labels.namespace }}/{{ $labels.pod }}/{{ $labels.container }} last exit was OOMKilled"
+            description: "Raise the container memory limit or investigate the leak; a restart will not fix it."
+        - alert: AppPersistentVolumeFillingUp
+          expr: |
+            kubelet_volume_stats_used_bytes{namespace=~"immich"}
+              / kubelet_volume_stats_capacity_bytes{namespace=~"immich"} > 0.85
+          for: 30m
+          labels:
+            severity: warning
+          annotations:
+            summary: "PVC {{ $labels.persistentvolumeclaim }} ({{ $labels.namespace }}) is {{ $value | humanizePercentage }} full"
+            description: "At 85% the next large write can wedge the app; grow the volume or prune."
+        # --- immich specifics
+        - alert: ImmichDatabaseDown
+          expr: pg_up{namespace="immich"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Immich postgres exporter reports the database down"
+            description: "pg_up == 0 for immich-db. Immich cannot serve; check the immich-db-0 pod and its PVC (iscsi)."
+        - alert: ImmichDatabaseConnectionsHigh
+          expr: |
+            sum(pg_stat_activity_count{namespace="immich",state="active"}) > 40
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Immich postgres has {{ $value }} active connections"
+            description: "Connections piling up usually means a stuck job or a leaked connection pool."
