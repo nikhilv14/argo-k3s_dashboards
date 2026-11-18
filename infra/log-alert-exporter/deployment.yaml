@@ -294,7 +294,8 @@ spec:
     matchLabels:
       app.kubernetes.io/name: log-alert-exporter
   endpoints:
+    # no jobName: this operator's ServiceMonitor API rejects it. The default job
+    # label is the ServiceMonitor name, which is `log-alert-exporter` - the
+    # LogAlertBridgeDown rule matches on that.
     - port: metrics
       interval: 60s
-      # explicit so the scrape job is `log-alert-exporter` (the LogAlertBridgeDown rule matches on it)
-      jobName: log-alert-exporter
