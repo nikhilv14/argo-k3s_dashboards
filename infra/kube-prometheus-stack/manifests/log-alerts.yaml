@@ -18,6 +18,17 @@ spec:
   groups:
     - name: apps.logs
       rules:
+        # TEMPORARY canary - proves the LogQL -> bridge -> Prometheus -> Alertmanager
+        # -> Discord path end to end. Deleted after verification.
+        - alert: LogAlertPipelineCanary
+          expr: log_alert_value{rule="HomeAssistantJournalVolume"} >= 1
+          for: 0s
+          labels:
+            severity: warning
+          annotations:
+            summary: "CANARY: log alerting pipeline is live"
+            description: "Temporary verification rule. HomeAssistantJournalVolume is {{ $value }} lines/hour, which is always >= 1 while log shipping works."
+
         - alert: OpenWebUIOAuthFailures
           expr: log_alert_value{rule="OpenWebUIOAuthFailures"} >= 1
           for: 15m
