@@ -441,7 +441,7 @@ data:
         },
         {
           "id": 15,
-          "title": "Top queried domains (10m)",
+          "title": "Top queried domains (1h)",
           "type": "table",
           "gridPos": {
             "h": 10,
@@ -456,7 +456,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(20, sum by (domain) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | domain != \"\" [10m])))",
+              "expr": "topk(20, sum by (domain) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | domain != \"\" [1h])))",
               "instant": true,
               "range": false
             }
