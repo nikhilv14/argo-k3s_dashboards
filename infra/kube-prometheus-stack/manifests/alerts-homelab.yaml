@@ -262,14 +262,29 @@ spec:
             summary: "PVE backup job {{ $labels.id }} ({{ $labels.schedule }}) had failures"
             description: "At least one vzdump task in the last slot ended in an error status."
         - alert: PVEBackupJobRunErrors
-          # the job-level task (id='') reports aggregate "job errors", which is
-          # invisible per guest and in pve_not_backed_up_*
+          # node status is derived from the newest vzdump run (see the exporter);
+          # 0 means a task in that run ended in an error/"job errors"
           expr: pve_backup_jobrun_status == 0
           for: 30m
           labels:
             severity: warning
           annotations:
-            summary: "PVE vzdump job on {{ $labels.node }} finished with 'job errors'"
+            summary: "PVE vzdump run on {{ $labels.node }} finished with 'job errors'"
+        - alert: PVEBackupJobRunStale
+          # catches backups that silently STOP: the newest run on the node is
+          # older than 1.5x the shortest enabled job interval covering a guest
+          # there. Without this, a node whose jobs were all removed looks healthy
+          # forever (last run OK, nothing new to report).
+          expr: |
+            pve_backup_jobrun_expected_interval_seconds > 0
+              and on(node) (time() - pve_backup_jobrun_last_run_timestamp_seconds)
+                  > pve_backup_jobrun_expected_interval_seconds * 1.5 + 3600
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "No vzdump run on {{ $labels.node }} for {{ $value | humanizeDuration }}"
+            description: "Newest vzdump task on {{ $labels.node }} is older than 1.5x the shortest enabled backup job that covers a guest on it. Backups may have stopped."
     # ---------- router (OpenWrt, scraped directly) ----------
     - name: homelab.router
       rules:
