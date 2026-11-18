@@ -570,6 +570,29 @@ data:
               "range": false
             }
           ]
+        },
+        {
+          "id": 21,
+          "title": "Top domains by client (1h)",
+          "type": "table",
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 74
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(30, sum by (clienthost, domain) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | clienthost != \"\" [1h])))",
+              "instant": true,
+              "range": false
+            }
+          ]
         }
       ]
     }
