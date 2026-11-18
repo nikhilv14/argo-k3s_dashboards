@@ -78,40 +78,74 @@ _lock = threading.Lock()
 DHCP_STREAM = os.environ.get(
     "DHCP_STREAM", '{job="syslog", host="OpenWrt", app="dnsmasq-dhcp"}')
 DHCP_LOOKBACK = int(os.environ.get("DHCP_LOOKBACK", "86400"))
+# dnsmasq also logs the answers it hands out: "cached <name> is <ip>". Those
+# give external destinations a name (dsthost) instead of a bare address.
+DNS_STREAM = os.environ.get(
+    "DNS_STREAM", '{job="syslog", host="OpenWrt", app="dnsmasq"}')
+DNS_LOOKBACK = int(os.environ.get("DNS_LOOKBACK", "21600"))
 HOSTMAP_REFRESH = float(os.environ.get("HOSTMAP_REFRESH", "300"))
+HOSTMAP_MAX = int(os.environ.get("HOSTMAP_MAX", "5000"))
 DHCPACK = re.compile(
     r"DHCPACK\([^)]*\)\s+(?P<ip>\S+)\s+(?P<mac>\S+)(?:\s+(?P<name>\S+))?")
+DNS_ANSWER = re.compile(
+    r"(?:cached|reply|config)\s+(?P<name>[^\s]+)\s+is\s+"
+    r"(?P<ip>[0-9]{1,3}(?:\.[0-9]{1,3}){3})")
 SRC_RE = re.compile(r"(?:^|\s)SRC=(?P<ip>[^ ]+)")
 DST_RE = re.compile(r"(?:^|\s)DST=(?P<ip>[^ ]+)")
 _hosts = {}
 
 
-def _refresh_hosts():
-    global _hosts
+def _loki_lines(query, lookback, limit=5000):
     base = LOKI_URL.split("/loki/api/v1/push")[0]
     end = int(time.time())
     url = base + "/loki/api/v1/query_range?" + urllib.parse.urlencode({
-        "query": DHCP_STREAM + ' |= "DHCPACK"',
-        "start": str(end - DHCP_LOOKBACK), "end": str(end), "limit": "5000"})
-    try:
-        with urllib.request.urlopen(url, timeout=20) as r:
-            data = json.load(r)
-    except Exception as e:
-        print(f"[hosts] refresh failed: {type(e).__name__}: {e}", flush=True)
-        return
-    m = {}
+        "query": query, "start": str(end - lookback), "end": str(end),
+        "limit": str(limit)})
+    with urllib.request.urlopen(url, timeout=25) as r:
+        data = json.load(r)
+    out = []
     for s in data.get("data", {}).get("result", []):
         for _ts, line in s.get("values", []):
+            out.append(line)
+    return out
+
+
+def _refresh_hosts():
+    global _hosts
+    m = {}
+    try:
+        # external destinations: most-observed name per address wins
+        tally = {}
+        for line in _loki_lines(
+                DNS_STREAM + ' | regexp "(cached|reply|config) (?<n>[^ ]+) is (?<ip>[0-9.]+)"',
+                DNS_LOOKBACK):
+            a = DNS_ANSWER.search(line)
+            if not a:
+                continue
+            tally.setdefault(a.group("ip"), {})
+            tally[a.group("ip")][a.group("name")] = \
+                tally[a.group("ip")].get(a.group("name"), 0) + 1
+        for ip, names in tally.items():
+            m[ip] = max(names.items(), key=lambda kv: kv[1])[0]
+    except Exception as e:
+        print(f"[hosts] dns names failed: {type(e).__name__}: {e}", flush=True)
+    try:
+        # DHCP hostnames are authoritative for internal hosts, so apply last
+        for line in _loki_lines(DHCP_STREAM + ' |= "DHCPACK"', DHCP_LOOKBACK):
             d = DHCPACK.search(line)
             if d and d.group("name"):
                 m[d.group("ip")] = d.group("name")
+    except Exception as e:
+        print(f"[hosts] dhcp names failed: {type(e).__name__}: {e}", flush=True)
     for pair in os.environ.get("HOSTMAP_EXTRA", "").split(","):
         if "=" in pair:
             ip, name = pair.split("=", 1)
             m[ip.strip()] = name.strip()
+    if len(m) > HOSTMAP_MAX:
+        m = dict(list(m.items())[:HOSTMAP_MAX])
     with _lock:
         _hosts = m
-    print(f"[hosts] {len(m)} ip->hostname entries", flush=True)
+    print(f"[hosts] {len(m)} ip->name entries", flush=True)
 
 
 def _hostmap_loop():
