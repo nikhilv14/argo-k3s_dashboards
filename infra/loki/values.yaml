@@ -32,6 +32,10 @@ loki:
   limits_config:
     retention_period: 720h
     allow_structured_metadata: false
+    # Default 500 makes any high-cardinality query fail ("maximum number of
+    # series reached") - a busy LAN has >500 distinct qnames per hour, which
+    # broke the "Top queried domains" panel. 2000 still bounds per-query memory.
+    max_query_series: 2000
   compactor:
     retention_enabled: true
     delete_request_store: filesystem
