@@ -9,11 +9,14 @@ VIP dies, MetalLB re-announces it from a node that still runs the relay.
 Parsing is deliberately defensive: RFC3164 (OpenWrt/busybox logd) and RFC5424
 both appear in the wild, and a line we cannot parse is still shipped - it just
 carries fewer labels.
+
+Noise is dropped HERE, at ingestion. Filtering in the dashboard is not enough:
+Loki stores what it is pushed, and the router emits tens of thousands of
+multicast/broadcast firewall rejects a day.
 """
 import json
 import os
 import re
-import socket
 import socketserver
 import threading
 import time
@@ -26,12 +29,45 @@ BATCH_SECS = float(os.environ.get("BATCH_SECS", "1.0"))
 MAX_LINE = int(os.environ.get("MAX_LINE", "8192"))
 DEBUG = os.environ.get("DEBUG", "false").lower() == "true"
 
+# --------------------------------------------------------------------------
+# Ingestion filters
+#   DROP_REJECTS=noise|all|none   firewall "reject ... in:" lines
+#   DROP_DNS=0|1                  dnsmasq "query[...] ... from ..." lines
+#   DROP_PATTERNS="re1,re2"       extra regexes matched against the message
+# --------------------------------------------------------------------------
+REJECT_NOISE = re.compile(
+    r"reject \S+ in:.*DST=(?:255\.255\.255\.255|ff02:|fe80:|192\.168\.12\.255)")
+REJECT_ANY = re.compile(r"reject \S+ in:")
+DNS_QUERY = re.compile(r"query\[[A-Z]+\] .* from ")
+
+
+def _build_drops():
+    mode = os.environ.get("DROP_REJECTS", "noise").strip().lower()
+    pats = []
+    if mode == "all":
+        pats.append(REJECT_ANY)
+    elif mode == "noise":
+        pats.append(REJECT_NOISE)
+    if os.environ.get("DROP_DNS", "0").strip() == "1":
+        pats.append(DNS_QUERY)
+    for extra in os.environ.get("DROP_PATTERNS", "").split(","):
+        extra = extra.strip()
+        if extra:
+            pats.append(re.compile(extra))
+    return pats
+
+
+DROPS = _build_drops()
+_dropped = {}
+
+_queue = []
+_lock = threading.Lock()
+
+
 def dbg(*a):
     if DEBUG:
         print("[dbg]", *a, flush=True)
 
-_queue = []
-_lock = threading.Lock()
 
 # <PRI> then optional TAG[pid]: / TAG:
 PRI = re.compile(r"^<(\d{1,3})>")
@@ -74,6 +110,12 @@ def parse(line, peer):
 
 def enqueue(line, peer):
     labels, msg = parse(line, peer)
+    for rx in DROPS:
+        if rx.search(msg):
+            with _lock:
+                _dropped[rx.pattern] = _dropped.get(rx.pattern, 0) + 1
+            dbg("dropped", rx.pattern, msg[:80])
+            return
     ts = time.time_ns()
     with _lock:
         _queue.append((ts, labels, msg))
@@ -83,8 +125,14 @@ def pusher():
     # _queue is module state; without this declaration the rebind below makes it
     # a local and the thread dies on UnboundLocalError before pushing anything.
     global _queue
+    last_stats = 0.0
     while True:
         time.sleep(BATCH_SECS)
+        now = time.time()
+        if now - last_stats > 60:
+            last_stats = now
+            if _dropped:
+                print("[drops]", json.dumps(_dropped, sort_keys=True), flush=True)
         with _lock:
             # rebind, never `batch, _queue[:] = _queue, []` - that assigns batch
             # to the SAME list object and then clears it, so every batch is empty
@@ -129,7 +177,9 @@ class TCPHandler(socketserver.StreamRequestHandler):
 
 class HealthHandler(socketserver.BaseRequestHandler):
     def handle(self):
-        self.request.sendall(b"ok\n")
+        with _lock:
+            dropped = sum(_dropped.values())
+        self.request.sendall(f"ok dropped={dropped}\n".encode())
 
 
 def serve(protocol):
@@ -145,6 +195,8 @@ def serve(protocol):
 
 
 if __name__ == "__main__":
+    if DROPS:
+        print("[filters]", [r.pattern for r in DROPS], flush=True)
     threading.Thread(target=pusher, daemon=True).start()
     threading.Thread(target=serve, args=("udp",), daemon=True).start()
     threading.Thread(target=serve, args=("tcp",), daemon=True).start()
