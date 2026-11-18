@@ -83,13 +83,14 @@ DHCP_LOOKBACK = int(os.environ.get("DHCP_LOOKBACK", "86400"))
 DNS_STREAM = os.environ.get(
     "DNS_STREAM", '{job="syslog", host="OpenWrt", app="dnsmasq"}')
 DNS_LOOKBACK = int(os.environ.get("DNS_LOOKBACK", "21600"))
+# Window for the DNS-answer aggregation. 1800s measured at 1381 series /
+# 813 distinct IPs - complete for the period, and under max_query_series.
+# Wider windows exceed the cap and the whole refresh fails.
+DNS_WINDOW = int(os.environ.get("DNS_WINDOW", "1800"))
 HOSTMAP_REFRESH = float(os.environ.get("HOSTMAP_REFRESH", "300"))
 HOSTMAP_MAX = int(os.environ.get("HOSTMAP_MAX", "5000"))
 DHCPACK = re.compile(
     r"DHCPACK\([^)]*\)\s+(?P<ip>\S+)\s+(?P<mac>\S+)(?:\s+(?P<name>\S+))?")
-DNS_ANSWER = re.compile(
-    r"(?:cached|reply|config)\s+(?P<name>[^\s]+)\s+is\s+"
-    r"(?P<ip>[0-9]{1,3}(?:\.[0-9]{1,3}){3})")
 SRC_RE = re.compile(r"(?:^|\s)SRC=(?P<ip>[^ ]+)")
 DST_RE = re.compile(r"(?:^|\s)DST=(?P<ip>[^ ]+)")
 _hosts = {}
@@ -110,21 +111,39 @@ def _loki_lines(query, lookback, limit=5000):
     return out
 
 
+def _loki_metric(query):
+    """Instant metric query -> {(labels...): float(value)}"""
+    base = LOKI_URL.split("/loki/api/v1/push")[0]
+    url = base + "/loki/api/v1/query?" + urllib.parse.urlencode({"query": query})
+    with urllib.request.urlopen(url, timeout=25) as r:
+        data = json.load(r)
+    out = {}
+    for s in data.get("data", {}).get("result", []):
+        m = {k: v for k, v in s.get("metric", {}).items() if v}
+        if m:
+            try:
+                out[tuple(sorted(m.items()))] = float(s["value"][1])
+            except (KeyError, IndexError, ValueError):
+                pass
+    return out
+
+
 def _refresh_hosts():
     global _hosts
     m = {}
+    # External destinations: aggregate server-side so nothing is sampled away.
+    # A 30m window stays under Loki's max_query_series (1381 series / 813 IPs
+    # measured); wider windows blow the cap.
     try:
-        # external destinations: most-observed name per address wins
+        rows = _loki_metric(
+            'sum by (n, ip) (count_over_time(' + DNS_STREAM +
+            ' | regexp "(cached|reply|config) (?<n>[^ ]+) is (?<ip>[0-9.]+)" '
+            '[' + str(DNS_WINDOW) + 's]))')
         tally = {}
-        for line in _loki_lines(
-                DNS_STREAM + ' | regexp "(cached|reply|config) (?<n>[^ ]+) is (?<ip>[0-9.]+)"',
-                DNS_LOOKBACK):
-            a = DNS_ANSWER.search(line)
-            if not a:
-                continue
-            tally.setdefault(a.group("ip"), {})
-            tally[a.group("ip")][a.group("name")] = \
-                tally[a.group("ip")].get(a.group("name"), 0) + 1
+        for labels, count in rows.items():
+            d = dict(labels)
+            tally.setdefault(d["ip"], {})
+            tally[d["ip"]][d["n"]] = tally[d["ip"]].get(d["n"], 0.0) + count
         for ip, names in tally.items():
             m[ip] = max(names.items(), key=lambda kv: kv[1])[0]
     except Exception as e:
