@@ -1,0 +1,109 @@
+# Log-derived alerts. The LogQL lives in infra/log-alert-exporter/rules.json and is
+# evaluated every 60s by the log-alert bridge, which publishes
+# log_alert_value{rule="..."}. This file decides the thresholds, `for` durations and
+# severity, so these alerts are grouped, deduplicated and delivered by Alertmanager
+# exactly like the Prometheus ones.
+#
+# A query with no matching lines evaluates to 0, so `>= N` alerts stay quiet when
+# there is nothing to report. Only HomeAssistantJournalVolume inverts that (== 0),
+# because HAOS always writes journal lines: silence means log shipping is broken.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: log-alerts
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: kube-prometheus-stack
+spec:
+  groups:
+    - name: apps.logs
+      rules:
+        - alert: OpenWebUIOAuthFailures
+          expr: log_alert_value{rule="OpenWebUIOAuthFailures"} >= 1
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Open WebUI OAuth sessions are failing ({{ $value }} in 15m)"
+            description: "Open WebUI logs 'Failed to refresh token', 'Token refresh failed' or 'No OAuth session found'. Users are being logged out or cannot reach the OIDC provider. Check Settings > Security in Open WebUI and the Ory/Google OAuth client, then the dashboard's error panel."
+
+        - alert: OpenWebUIHTTP5xx
+          expr: log_alert_value{rule="OpenWebUIHTTP5xx"} >= 3
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Open WebUI returned {{ $value }} 5xx responses in 15m"
+            description: "uvicorn access log shows 5xx statuses. Usually the upstream LLM (llm-router/litellm) failing or timing out - correlate with the requests-by-status panel and the llm namespace pod logs."
+
+        - alert: OpenWebUIClientErrors
+          expr: log_alert_value{rule="OpenWebUIClientErrors"} >= 10
+          for: 15m
+          labels:
+            severity: info
+          annotations:
+            summary: "Open WebUI returned {{ $value }} 4xx responses in 15m"
+            description: "Client errors, not server faults. Recurring 403 on /api/v1/channels/ or 405 on a tasks endpoint usually means a stale client or a permissions regression rather than an outage."
+
+        - alert: OpenWebUIRetrievalErrors
+          expr: log_alert_value{rule="OpenWebUIRetrievalErrors"} >= 5
+          for: 30m
+          labels:
+            severity: info
+          annotations:
+            summary: "Open WebUI failed to fetch {{ $value }} web documents in 15m"
+            description: "RAG/web-retrieval fetch failures (open_webui.retrieval.web.utils). Typically an unreachable or non-UTF-8 source; a burst means a linked resource went away or a site changed its markup."
+
+        - alert: OpenWebUIErrorBurst
+          expr: log_alert_value{rule="OpenWebUIErrorBurst"} >= 10
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Open WebUI logged {{ $value }} ERROR/CRITICAL/traceback lines in 15m"
+            description: "Application-level error burst in open_webui logs. Check the dashboard's error-line stream for the traceback and the pod restarts panel."
+
+        - alert: HomeAssistantLogErrors
+          expr: log_alert_value{rule="HomeAssistantLogErrors"} >= 3
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Home Assistant core logged {{ $value }} errors in 15m"
+            description: "ERROR/CRITICAL lines from HA core in the HAOS journal. Check the HA core log panel - recurring errors usually mean a failing integration or an unreachable device. HA is quiet by default, so a burst is meaningful."
+
+        - alert: HomeAssistantAddonErrors
+          expr: log_alert_value{rule="HomeAssistantAddonErrors"} >= 5
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Home Assistant supervisor/add-ons logged {{ $value }} errors in 15m"
+            description: "ERROR/CRITICAL lines from hassio_supervisor or an add-on container. Check Settings > System > Logs in Home Assistant; a crash-looping add-on also shows here."
+
+        - alert: HomeAssistantJournalShippingStalled
+          expr: log_alert_value{rule="HomeAssistantJournalVolume"} == 0
+          for: 30m
+          labels:
+            severity: critical
+          annotations:
+            summary: "No Home Assistant journal lines reached Loki for 30m"
+            description: "HAOS always writes journal lines (kernel, systemd, add-ons), so zero for 30 minutes means the Grafana Alloy add-on stopped or cannot reach Loki at 192.168.12.63:3100. Check the add-on state and its log."
+
+        - alert: LogAlertBridgeDown
+          expr: up{job="log-alert-exporter"} == 0
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "The log-alert bridge is down"
+            description: "log-alert-exporter is not being scraped, so every log-derived alert above is blind. Check the pod in namespace monitoring."
+
+        - alert: LogAlertBridgeEvalErrors
+          expr: rate(log_alert_eval_errors_total[15m]) > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "The log-alert bridge is failing to evaluate its LogQL"
+            description: "Loki query errors from log-alert-exporter. The affected rules publish 0, which silences their alerts instead of firing - check the bridge pod log for the query error."

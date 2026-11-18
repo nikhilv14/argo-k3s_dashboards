@@ -286,6 +286,32 @@ spec:
       - ServerSideApply=true
       - CreateNamespace=true
 ---
+# Log-alert bridge: evaluates LogQL from infra/log-alert-exporter/rules.json against
+# Loki and exposes log_alert_value{rule="..."}. Thresholds live in
+# infra/kube-prometheus-stack/manifests/log-alerts.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: log-alert-exporter
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: infra
+  source:
+    repoURL: https://github.com/nikhilv14/argo-k3s_dashboards.git
+    targetRevision: main
+    path: infra/log-alert-exporter
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - ServerSideApply=true
+---
 # Proxmox VE metrics: one exporter per PVE node (beast-cluster), each an
 # independent scrape target. Token sealed in infra/pve-exporter/sealed-secret.yaml.
 apiVersion: argoproj.io/v1alpha1

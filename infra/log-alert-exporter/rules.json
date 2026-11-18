@@ -1,0 +1,37 @@
+{
+  "_comment": "LogQL evaluated by infra/log-alert-exporter/log_alert_bridge.py. Each entry becomes log_alert_value{rule=\"name\"}; thresholds, `for` and routing live in infra/kube-prometheus-stack/manifests/log-alerts.yaml. Every expr must be a metric query. This Loki's `| regexp` does not drop lines, so a severity/status is captured into a named group and filtered with `| x != \"\"`. Status is matched at end-of-line: the uvicorn access log ends with the code, and matching 5xx anywhere also catches millisecond timestamps like `.500`.",
+  "rules": [
+    {
+      "name": "OpenWebUIOAuthFailures",
+      "expr": "sum(count_over_time({job=\"llm/open-webui\"} | regexp \"(?P<sev>Failed to refresh token|Token refresh failed|No OAuth session found)\" | sev != \"\" [15m]))"
+    },
+    {
+      "name": "OpenWebUIHTTP5xx",
+      "expr": "sum(count_over_time({job=\"llm/open-webui\"} | regexp \"(?P<status>5[0-9][0-9])$\" | status != \"\" [15m]))"
+    },
+    {
+      "name": "OpenWebUIClientErrors",
+      "expr": "sum(count_over_time({job=\"llm/open-webui\"} | regexp \"(?P<status>4[0-9][0-9])$\" | status != \"\" [15m]))"
+    },
+    {
+      "name": "OpenWebUIRetrievalErrors",
+      "expr": "sum(count_over_time({job=\"llm/open-webui\"} |= \"Error fetching\" [15m]))"
+    },
+    {
+      "name": "OpenWebUIErrorBurst",
+      "expr": "sum(count_over_time({job=\"llm/open-webui\"} | regexp \"(?P<sev>ERROR|CRITICAL|Traceback|Exception)\" | sev != \"\" [15m]))"
+    },
+    {
+      "name": "HomeAssistantLogErrors",
+      "expr": "sum(count_over_time({job=\"systemd-journal\", syslog_identifier=\"homeassistant\"} | regexp \"(?P<sev>ERROR|CRITICAL)\" | sev != \"\" [15m]))"
+    },
+    {
+      "name": "HomeAssistantAddonErrors",
+      "expr": "sum(count_over_time({job=\"systemd-journal\", syslog_identifier=~\"hassio_supervisor|app_.+\"} | regexp \"(?P<sev>ERROR|CRITICAL)\" | sev != \"\" [15m]))"
+    },
+    {
+      "name": "HomeAssistantJournalVolume",
+      "expr": "sum(count_over_time({job=\"systemd-journal\"} [1h]))"
+    }
+  ]
+}
