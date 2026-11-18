@@ -76,7 +76,7 @@ prometheus:
           type: Bearer
           credentials_file: /etc/prometheus/secrets/ha-prometheus/token
         # Drop the OpenMetrics `_created` timestamps (563 series of pure noise).
-        metric_relabelings:
+        metric_relabel_configs:
           - source_labels: [__name__]
             regex: "hass_(state_change|automation_triggered_count)_created"
             action: drop
