@@ -188,7 +188,7 @@ data:
         },
         {
           "id": 7,
-          "title": "Slowest operations (p95, ms)",
+          "title": "Key operations \u2014 p95 latency (ms)",
           "type": "timeseries",
           "gridPos": {
             "h": 8,
@@ -203,8 +203,33 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(10, histogram_quantile(0.95, sum by (le, __name__) (rate({__name__=~\"immich_.*_duration_bucket\"}[15m]))))",
-              "legendFormat": "{{__name__}}"
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(immich_asset_repository_get_time_bucket_duration_bucket[15m])))",
+              "legendFormat": "asset get_time"
+            },
+            {
+              "refId": "B",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(immich_asset_repository_get_for_thumbnail_duration_bucket[15m])))",
+              "legendFormat": "asset thumbnail"
+            },
+            {
+              "refId": "C",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(immich_album_repository_get_by_id_duration_bucket[15m])))",
+              "legendFormat": "album get_by_id"
+            },
+            {
+              "refId": "D",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(immich_person_repository_get_all_for_user_duration_bucket[15m])))",
+              "legendFormat": "person get_all_for_user"
+            },
+            {
+              "refId": "E",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(immich_job_repository_get_queue_duration_bucket[15m])))",
+              "legendFormat": "job get_queue"
+            },
+            {
+              "refId": "F",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(immich_search_repository_search_metadata_duration_bucket[15m])))",
+              "legendFormat": "search metadata"
             }
           ],
           "fieldConfig": {
@@ -215,7 +240,7 @@ data:
         },
         {
           "id": 8,
-          "title": "Slowest operations (p99, ms)",
+          "title": "Repository call rate (all operations)",
           "type": "timeseries",
           "gridPos": {
             "h": 8,
@@ -230,19 +255,14 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(10, histogram_quantile(0.99, sum by (le, __name__) (rate({__name__=~\"immich_.*_duration_bucket\"}[15m]))))",
-              "legendFormat": "{{__name__}}"
+              "expr": "sum(rate({__name__=~\"immich_.*_duration_count\"}[15m]))",
+              "legendFormat": "ops/sec"
             }
-          ],
-          "fieldConfig": {
-            "defaults": {
-              "unit": "ms"
-            }
-          }
+          ]
         },
         {
           "id": 9,
-          "title": "Operations per second (top 10)",
+          "title": "Key operations \u2014 calls/sec",
           "type": "timeseries",
           "gridPos": {
             "h": 8,
@@ -257,8 +277,33 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(10, sum by (__name__) (rate({__name__=~\"immich_.*_duration_count\"}[15m])))",
-              "legendFormat": "{{__name__}}"
+              "expr": "sum(rate(immich_asset_repository_get_time_duration_count[15m]))",
+              "legendFormat": "asset get_time"
+            },
+            {
+              "refId": "B",
+              "expr": "sum(rate(immich_asset_repository_get_for_thumbnail_duration_count[15m]))",
+              "legendFormat": "asset thumbnail"
+            },
+            {
+              "refId": "C",
+              "expr": "sum(rate(immich_album_repository_get_by_id_duration_count[15m]))",
+              "legendFormat": "album get_by_id"
+            },
+            {
+              "refId": "D",
+              "expr": "sum(rate(immich_person_repository_get_all_for_user_duration_count[15m]))",
+              "legendFormat": "person get_all_for_user"
+            },
+            {
+              "refId": "E",
+              "expr": "sum(rate(immich_job_repository_get_queue_duration_count[15m]))",
+              "legendFormat": "job get_queue"
+            },
+            {
+              "refId": "F",
+              "expr": "sum(rate(immich_search_repository_search_metadata_duration_count[15m]))",
+              "legendFormat": "search metadata"
             }
           ]
         },
