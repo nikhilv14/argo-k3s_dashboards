@@ -149,8 +149,9 @@ spec:
             summary: "Proxmox node {{ $labels.id }} rebooted"
         - alert: PVEGuestDown
           # Ignore list: lxc/100 and lxc/106 are intentionally decommissioned
-          # (kept stopped on purpose); lxc/104 is still monitored.
-          expr: max by (id) (pve_up{id=~"qemu/.*|lxc/.*",id!~"lxc/(100|106)"}) == 0
+          # (kept stopped on purpose); lxc/104 is still monitored. qemu/9101 is
+          # the standby Home Assistant build, kept stopped on purpose (onboot=0).
+          expr: max by (id) (pve_up{id=~"qemu/.*|lxc/.*",id!~"lxc/(100|106)|qemu/9101"}) == 0
           for: 10m
           labels:
             severity: critical

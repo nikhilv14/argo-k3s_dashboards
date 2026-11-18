@@ -1,0 +1,359 @@
+# "Network & Router" dashboard, auto-loaded by the Grafana sidecar
+# (label grafana_dashboard: "1", same pattern as dashboards-homelab.yaml).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-network
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  network-router.json: |
+    {
+      "title": "Network & Router",
+      "uid": "network-router",
+      "tags": [
+        "homelab",
+        "network"
+      ],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "templating": {
+        "list": []
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Router reachable",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "up{job=\"openwrt\"}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "justifyMode": "auto",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 2,
+          "title": "WAN ping",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "min(probe_success{job=\"wan-ping\"})"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 3,
+          "title": "PVE hosts ping",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "min(probe_success{job=\"pve-hosts-ping\"})"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 4,
+          "title": "Public hosts (Cloudflare edge)",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "min(probe_success{job=\"edge-https\"})"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "red",
+                    "value": null
+                  },
+                  {
+                    "color": "green",
+                    "value": 1
+                  }
+                ]
+              }
+            }
+          },
+          "options": {
+            "colorMode": "background",
+            "graphMode": "none",
+            "textMode": "auto"
+          }
+        },
+        {
+          "id": 5,
+          "title": "WAN latency",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 4
+          },
+          "datasource": {
+            "type": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_duration_seconds{job=\"wan-ping\"}",
+              "legendFormat": "{{instance}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": 6,
+          "title": "Public host latency",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 4
+          },
+          "datasource": {
+            "type": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_duration_seconds{job=\"edge-https\"}",
+              "legendFormat": "{{instance}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            }
+          }
+        },
+        {
+          "id": 7,
+          "title": "Router load (per CPU)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 12
+          },
+          "datasource": {
+            "type": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "node_load1{job=\"openwrt\"} / on() group_left count(node_cpu_seconds_total{job=\"openwrt\",mode=\"idle\"})"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          }
+        },
+        {
+          "id": 8,
+          "title": "Router memory",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 12
+          },
+          "datasource": {
+            "type": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "100*(1 - node_memory_MemAvailable_bytes{job=\"openwrt\"}/node_memory_MemTotal_bytes{job=\"openwrt\"})",
+              "legendFormat": "used %"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent"
+            }
+          }
+        },
+        {
+          "id": 9,
+          "title": "Router conntrack",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 12
+          },
+          "datasource": {
+            "type": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "100*node_nf_conntrack_entries{job=\"openwrt\"}/node_nf_conntrack_entries_limit{job=\"openwrt\"}",
+              "legendFormat": "% used"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent"
+            }
+          }
+        },
+        {
+          "id": 10,
+          "title": "Router syslog (last 6h)",
+          "type": "logs",
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 20
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "{job=\"syslog\"}",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "showCommonLabels": false,
+            "prettifyLogMessage": false,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true,
+            "dedupStrategy": "none"
+          }
+        }
+      ]
+    }
