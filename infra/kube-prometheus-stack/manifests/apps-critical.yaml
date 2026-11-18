@@ -89,7 +89,7 @@ spec:
         # --- generic k8s app health (add namespaces to the regex as apps land)
         - alert: AppDeploymentUnavailable
           expr: |
-            kube_deployment_status_replicas_unavailable{namespace=~"immich"} > 0
+            kube_deployment_status_replicas_unavailable{namespace=~"immich|llm"} > 0
           for: 15m
           labels:
             severity: warning
@@ -98,7 +98,7 @@ spec:
             description: "Deployment has been unable to keep its replicas up for 15 minutes."
         - alert: AppPodCrashLooping
           expr: |
-            increase(kube_pod_container_status_restarts_total{namespace=~"immich"}[15m]) > 3
+            increase(kube_pod_container_status_restarts_total{namespace=~"immich|llm"}[15m]) > 3
           for: 5m
           labels:
             severity: warning
@@ -107,7 +107,7 @@ spec:
             description: "Container is restarting repeatedly; check its last logs before restarting the workload."
         - alert: AppPodNotReady
           expr: |
-            kube_pod_status_ready{condition="true",namespace=~"immich"} == 0
+            kube_pod_status_ready{condition="true",namespace=~"immich|llm"} == 0
               and on(namespace, pod) kube_pod_status_phase{phase="Running"} == 1
           for: 15m
           labels:
@@ -117,7 +117,7 @@ spec:
             description: "Readiness probe failing; the app is not serving traffic."
         - alert: AppContainerOOMKilled
           expr: |
-            kube_pod_container_status_last_terminated_reason{reason="OOMKilled",namespace=~"immich"} == 1
+            kube_pod_container_status_last_terminated_reason{reason="OOMKilled",namespace=~"immich|llm"} == 1
           for: 10m
           labels:
             severity: warning
@@ -126,8 +126,8 @@ spec:
             description: "Raise the container memory limit or investigate the leak; a restart will not fix it."
         - alert: AppPersistentVolumeFillingUp
           expr: |
-            kubelet_volume_stats_used_bytes{namespace=~"immich"}
-              / kubelet_volume_stats_capacity_bytes{namespace=~"immich"} > 0.85
+            kubelet_volume_stats_used_bytes{namespace=~"immich|llm"}
+              / kubelet_volume_stats_capacity_bytes{namespace=~"immich|llm"} > 0.85
           for: 30m
           labels:
             severity: warning
@@ -152,6 +152,20 @@ spec:
           annotations:
             summary: "Immich postgres has {{ $value }} active connections"
             description: "Connections piling up usually means a stuck job or a leaked connection pool."
+        # --- open-webui. Its user/operation signals live in Loki (uvicorn access
+        # log), and this stack has no Loki-backed alerting - the dashboard surfaces
+        # them and the ops agent triages them. Prometheus-side, the generic rules
+        # above (probe down, pod not ready, crash looping, PVC filling) already
+        # cover the app because `llm` is in their namespace regex.
+        # --- home assistant ---
+        - alert: HomeAssistantCoreDown
+          expr: probe_success{job="homeassistant-tcp"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "Home Assistant is not accepting connections on 8123"
+            description: "TCP probe to 192.168.12.112:8123 fails. Check the HAOS host and core container (ha core info / ha core logs from the Advanced SSH add-on)."
 ---
 # Immich's own Prometheus telemetry. It is already enabled
 # (IMMICH_TELEMETRY_INCLUDE=all) and the Service exposes it on port `metrics`
@@ -174,3 +188,49 @@ spec:
       path: /metrics
       interval: 30s
       scrapeTimeout: 10s
+---
+# Open WebUI (k8s `llm`). /health is the app's own liveness endpoint and needs no
+# auth, so the probe proves the process rather than the SSO login page.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: open-webui-http
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: apps-critical
+spec:
+  jobName: open-webui-http
+  interval: 60s
+  scrapeTimeout: 30s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - http://open-webui.llm.svc.cluster.local:8080/health
+---
+# Home Assistant is a HAOS appliance (odroid-m1s, 192.168.12.112), not a k8s pod.
+# Every HTTP path needs a token or serves the frontend, so the honest liveness
+# signal is "Core is accepting connections on 8123". The metrics and logs legs
+# are still pending - see the critical-app-onboarding skill.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: homeassistant-tcp
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: apps-critical
+spec:
+  jobName: homeassistant-tcp
+  interval: 60s
+  scrapeTimeout: 30s
+  module: tcp_connect
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+    path: /probe
+  targets:
+    staticConfig:
+      static:
+        - 192.168.12.112:8123

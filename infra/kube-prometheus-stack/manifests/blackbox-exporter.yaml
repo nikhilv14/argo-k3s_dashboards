@@ -31,6 +31,11 @@ data:
         timeout: 5s
         icmp:
           preferred_ip_protocol: ip4
+      tcp_connect:
+        prober: tcp
+        timeout: 5s
+        tcp:
+          preferred_ip_protocol: ip4
       dns_daemonagent:
         prober: dns
         timeout: 5s

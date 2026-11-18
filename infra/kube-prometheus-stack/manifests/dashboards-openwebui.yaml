@@ -1,0 +1,317 @@
+# "Open WebUI - System & Usage". k8s namespace llm; health from the blackbox
+# Probe, usage from the uvicorn access log in Loki (the app has no /metrics).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-open-webui
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  open-webui.json: |
+    {
+      "title": "Open WebUI \u2014 System & Usage",
+      "uid": "open-webui",
+      "tags": [
+        "homelab",
+        "apps",
+        "llm"
+      ],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "templating": {
+        "list": []
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "Open WebUI up",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "probe_success{job=\"open-webui-http\"}",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Restarts (15m)",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"llm\",container=\"open-webui\"}[15m]))",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Memory working set",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "container_memory_working_set_bytes{namespace=\"llm\",container=\"open-webui\"}",
+              "instant": true,
+              "range": false
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            }
+          }
+        },
+        {
+          "id": 4,
+          "title": "Requests (1h)",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(count_over_time({job=\"llm/open-webui\"} [1h]))",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "Requests per 5m by status",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 4
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "sum by (status) (count_over_time({job=\"llm/open-webui\"} | regexp \"\\\"[A-Z]+ [^ ]+ HTTP/1[.]1\\\" (?P<status>[0-9]{3})\" | status != \"\" [5m]))",
+              "instant": false,
+              "range": true,
+              "legendFormat": "{{status}}"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "HTTP 5xx per 5m",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 4
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "sum(count_over_time({job=\"llm/open-webui\"} | regexp \"\\\"[A-Z]+ [^ ]+ HTTP/1[.]1\\\" (?P<status>[0-9]{3})\" | status != \"\" | status =~ \"5..\" [5m]))",
+              "instant": false,
+              "range": true,
+              "legendFormat": "5xx"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Top paths (1h)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 12
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "topk(8, sum by (path) (count_over_time({job=\"llm/open-webui\"} | regexp \"\\\"[A-Z]+ (?P<path>[^ ]+) HTTP/1[.]1\\\" (?P<status>[0-9]{3})\" | status != \"\" | path != \"/_app/version.json\" [1h])))",
+              "instant": false,
+              "range": true,
+              "legendFormat": "{{path}}"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "CPU usage",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 12
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "rate(container_cpu_usage_seconds_total{namespace=\"llm\",container=\"open-webui\"}[5m])",
+              "instant": false,
+              "range": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short"
+            }
+          }
+        },
+        {
+          "id": 9,
+          "title": "PVC usage",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 20
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "100 * kubelet_volume_stats_used_bytes{namespace=\"llm\",persistentvolumeclaim=~\"data.*\"} / kubelet_volume_stats_capacity_bytes{namespace=\"llm\",persistentvolumeclaim=~\"data.*\"}",
+              "instant": false,
+              "range": true
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percent"
+            }
+          }
+        },
+        {
+          "id": 10,
+          "title": "Open WebUI error lines",
+          "type": "logs",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 20
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "{job=\"llm/open-webui\"} | regexp \"(?i)(?P<level>error|traceback|exception|failed)\" | level != \"\""
+            }
+          ]
+        }
+      ]
+    }

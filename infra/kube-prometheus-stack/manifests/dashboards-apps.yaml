@@ -331,6 +331,114 @@ data:
             "wrapLogMessage": true,
             "dedupStrategy": "none"
           }
+        },
+        {
+          "id": 11,
+          "title": "Open WebUI up",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 28
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "probe_success{job=\"open-webui-http\"}",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 12,
+          "title": "Open WebUI restarts (15m)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 28
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(increase(kube_pod_container_status_restarts_total{namespace=\"llm\",container=\"open-webui\"}[15m]))",
+              "instant": false,
+              "range": true
+            }
+          ]
+        },
+        {
+          "id": 13,
+          "title": "Open WebUI requests (1h)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 28
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "sum(count_over_time({job=\"llm/open-webui\"} [1h]))",
+              "instant": false,
+              "range": true
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "title": "HA core listening",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 28
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "probe_success{job=\"homeassistant-tcp\"}",
+              "instant": true,
+              "range": false
+            }
+          ]
         }
       ]
     }
