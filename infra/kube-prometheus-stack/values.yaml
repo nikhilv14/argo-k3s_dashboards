@@ -47,6 +47,20 @@ prometheus:
             labels:
               host: openwrt
               role: router
+      # Jellyfin runs under docker on CT104 (media-stack), outside k8s, so it is
+      # scraped directly like the router. The exporter is the community
+      # eurosatofficial/jellyfin-prometheus-exporter, run as a container on the
+      # same host and pointed at Jellyfin's API.
+      # Add further app exporters here (or better: as a ServiceMonitor once the
+      # app moves into the cluster) - see the critical-app-onboarding skill.
+      - job_name: jellyfin-exporter
+        scrape_interval: 60s
+        metrics_path: /metrics
+        static_configs:
+          - targets: ['192.168.12.142:9594']
+            labels:
+              app: jellyfin
+              host: media-stack
     serviceMonitorSelectorNilUsesHelmValues: false
     podMonitorSelectorNilUsesHelmValues: false
     ruleSelectorNilUsesHelmValues: false

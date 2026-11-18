@@ -152,3 +152,25 @@ spec:
           annotations:
             summary: "Immich postgres has {{ $value }} active connections"
             description: "Connections piling up usually means a stuck job or a leaked connection pool."
+---
+# Immich's own Prometheus telemetry. It is already enabled
+# (IMMICH_TELEMETRY_INCLUDE=all) and the Service exposes it on port `metrics`
+# (8081): host metrics plus a histogram of every repository/DB call.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: immich-server
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: apps-critical
+spec:
+  namespaceSelector:
+    matchNames: ["immich"]
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: immich-server
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      scrapeTimeout: 10s

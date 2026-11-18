@@ -1,0 +1,355 @@
+# "Immich — System" dashboard. Data source: Immich's own Prometheus telemetry
+# (IMMICH_TELEMETRY_INCLUDE=all -> /metrics on the immich-server Service, port 8081)
+# plus the namespace log stream. Library/user-action panels live in the
+# "Immich — Library & Users" dashboard (needs immich-exporter + an API key).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-immich
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  immich-system.json: |
+    {
+      "title": "Immich \u2014 System",
+      "uid": "immich-system",
+      "tags": [
+        "homelab",
+        "immich",
+        "apps",
+        "critical"
+      ],
+      "description": "Immich server internals from its own telemetry (IMMICH_TELEMETRY_INCLUDE=all, /metrics :8081): host resources, every repository/DB call duration, users, and the error log stream.",
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "templating": {
+        "list": []
+      },
+      "panels": [
+        {
+          "id": 1,
+          "type": "row",
+          "title": "Host / system",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "panels": []
+        },
+        {
+          "id": 2,
+          "title": "CPU utilization",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "system_cpu_utilization",
+              "legendFormat": "{{otel_scope_name}} {{process_cpu_state}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit"
+            }
+          }
+        },
+        {
+          "id": 3,
+          "title": "Memory",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "system_memory_utilization",
+              "legendFormat": "system used %"
+            },
+            {
+              "refId": "B",
+              "expr": "process_memory_usage",
+              "legendFormat": "process RSS"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit"
+            }
+          },
+          "overrides": [
+            {
+              "matcher": {
+                "id": "byFrameRefID",
+                "options": "B"
+              },
+              "properties": [
+                {
+                  "id": "unit",
+                  "value": "bytes"
+                },
+                {
+                  "id": "custom.axisPlacement",
+                  "value": "right"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Network I/O",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 9
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "rate(system_network_io_total[15m])",
+              "legendFormat": "{{direction}} {{interface}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "Bps"
+            }
+          }
+        },
+        {
+          "id": 5,
+          "title": "Network errors / drops",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 9
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "rate(system_network_errors_total[15m])",
+              "legendFormat": "errors {{interface}}"
+            },
+            {
+              "refId": "B",
+              "expr": "rate(system_network_dropped_total[15m])",
+              "legendFormat": "dropped {{interface}}"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "type": "row",
+          "title": "Database / IO \u2014 repository call durations",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 17
+          },
+          "panels": []
+        },
+        {
+          "id": 7,
+          "title": "Slowest operations (p95, ms)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 18
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(10, histogram_quantile(0.95, sum by (le, __name__) (rate({__name__=~\"immich_.*_duration_bucket\"}[15m]))))",
+              "legendFormat": "{{__name__}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms"
+            }
+          }
+        },
+        {
+          "id": 8,
+          "title": "Slowest operations (p99, ms)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 18
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(10, histogram_quantile(0.99, sum by (le, __name__) (rate({__name__=~\"immich_.*_duration_bucket\"}[15m]))))",
+              "legendFormat": "{{__name__}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ms"
+            }
+          }
+        },
+        {
+          "id": 9,
+          "title": "Operations per second (top 10)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 26
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "topk(10, sum by (__name__) (rate({__name__=~\"immich_.*_duration_count\"}[15m])))",
+              "legendFormat": "{{__name__}}"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "title": "Users",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 26
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "immich_users_total"
+            }
+          ]
+        },
+        {
+          "id": 11,
+          "type": "row",
+          "title": "Logs",
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 30
+          },
+          "panels": []
+        },
+        {
+          "id": 12,
+          "title": "Immich server log",
+          "type": "logs",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 31
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "{namespace=\"immich\"}",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true,
+            "dedupStrategy": "none"
+          }
+        },
+        {
+          "id": 13,
+          "title": "Immich errors",
+          "type": "logs",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 31
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "{namespace=\"immich\"} |~ \"(?i)error|fatal|exception|fail\"",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "sortOrder": "Descending",
+            "wrapLogMessage": true,
+            "dedupStrategy": "none"
+          }
+        }
+      ]
+    }
