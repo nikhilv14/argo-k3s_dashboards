@@ -1,0 +1,313 @@
+# "Home Assistant - System & Activity". HAOS appliance 192.168.12.112, scraped
+# at /api/prometheus with the sealed long-lived token. Logs are not onboarded
+# yet (needs a journal-shipping add-on) - see critical-app-onboarding.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-home-assistant
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  home-assistant.json: |
+    {
+      "title": "Home Assistant \u2014 System & Activity",
+      "uid": "home-assistant",
+      "tags": [
+        "homelab",
+        "apps",
+        "home-assistant"
+      ],
+      "timezone": "browser",
+      "refresh": "30s",
+      "time": {
+        "from": "now-6h",
+        "to": "now"
+      },
+      "templating": {
+        "list": []
+      },
+      "panels": [
+        {
+          "id": 1,
+          "title": "HA core listening",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "probe_success{job=\"homeassistant-tcp\"}",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "title": "Entities unavailable",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(hass_entity_available{app=\"home-assistant\"} == 0)",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "title": "Entities tracked",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "count(hass_entity_available{app=\"home-assistant\"})",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "title": "Updates available",
+          "type": "stat",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 0
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(hass_update_state{app=\"home-assistant\"})",
+              "instant": true,
+              "range": false
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "title": "State changes per 5m",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 4
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum(rate(hass_state_change_total{app=\"home-assistant\"}[5m]))",
+              "instant": false,
+              "range": true,
+              "legendFormat": "state changes/s"
+            }
+          ]
+        },
+        {
+          "id": 6,
+          "title": "Automations triggered (15m)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 4
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "topk(8, sum by (entity) (increase(hass_automation_triggered_count_total{app=\"home-assistant\"}[15m])))",
+              "instant": false,
+              "range": true,
+              "legendFormat": "{{entity}}"
+            }
+          ]
+        },
+        {
+          "id": 7,
+          "title": "Chattiest entities (1h)",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 12
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "topk(10, sum by (entity, friendly_name) (increase(hass_state_change_total{app=\"home-assistant\"}[1h])))",
+              "instant": false,
+              "range": true,
+              "legendFormat": "{{friendly_name}}"
+            }
+          ]
+        },
+        {
+          "id": 8,
+          "title": "Temperature sensors",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 12
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "hass_sensor_temperature_celsius{app=\"home-assistant\"}",
+              "instant": false,
+              "range": true,
+              "legendFormat": "{{friendly_name}}"
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "unit": "celsius"
+            }
+          }
+        },
+        {
+          "id": 9,
+          "title": "Entities by domain",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 20
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "sum by (domain) (hass_entity_available{app=\"home-assistant\"})",
+              "instant": false,
+              "range": true,
+              "legendFormat": "{{domain}}"
+            }
+          ]
+        },
+        {
+          "id": 10,
+          "title": "Update entities pending",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 20
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "hass_update_state{app=\"home-assistant\"}",
+              "instant": false,
+              "range": true,
+              "legendFormat": "{{friendly_name}}"
+            }
+          ]
+        }
+      ]
+    }
