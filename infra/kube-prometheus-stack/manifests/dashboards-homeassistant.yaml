@@ -308,6 +308,156 @@ data:
               "legendFormat": "{{friendly_name}}"
             }
           ]
+        },
+        {
+          "id": 11,
+          "title": "HA core log",
+          "type": "logs",
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 28
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "{job=\"systemd-journal\", syslog_identifier=\"homeassistant\"}",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true
+          }
+        },
+        {
+          "id": 12,
+          "title": "HAOS errors & warnings",
+          "type": "logs",
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 12,
+            "y": 28
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "{job=\"systemd-journal\"} | regexp \"(?P<sev>ERROR|CRITICAL|WARNING)\" | sev != \"\"",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true
+          }
+        },
+        {
+          "id": 13,
+          "title": "HA core errors per 5m",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 37
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "sum(count_over_time({job=\"systemd-journal\", syslog_identifier=\"homeassistant\"} | regexp \"(?P<sev>ERROR|CRITICAL)\" | sev != \"\" [5m]))",
+              "queryType": "range",
+              "legendFormat": ""
+            }
+          ]
+        },
+        {
+          "id": 14,
+          "title": "Lines per 15m by component",
+          "type": "timeseries",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 37
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "sum by (syslog_identifier) (count_over_time({job=\"systemd-journal\"}[15m]))",
+              "queryType": "range",
+              "legendFormat": "{{syslog_identifier}}"
+            }
+          ]
+        },
+        {
+          "id": 15,
+          "title": "Add-on logs",
+          "type": "logs",
+          "gridPos": {
+            "h": 9,
+            "w": 24,
+            "x": 0,
+            "y": 45
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "loki",
+                "uid": "loki"
+              },
+              "expr": "{job=\"systemd-journal\", container_name=~\"app_.+\"}",
+              "queryType": "range"
+            }
+          ],
+          "options": {
+            "showTime": true,
+            "showLabels": false,
+            "prettifyLogMessage": false,
+            "enableLogDetails": true
+          }
         }
       ]
     }

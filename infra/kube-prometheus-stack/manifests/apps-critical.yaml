@@ -166,6 +166,16 @@ spec:
           annotations:
             summary: "{{ $value }} Home Assistant entities are unavailable"
             description: "Entities reporting hass_entity_available == 0. Usually an integration/device that dropped off the network; check Settings > Devices & Services for errored entries."
+        - alert: HomeAssistantLogErrors
+          # HA core logs to the HAOS journald; severity must be parsed from the
+          # line, the `level` stream label is set from the first entry and goes stale.
+          expr: sum(count_over_time({job="systemd-journal", syslog_identifier="homeassistant"} | regexp "(?P<sev>ERROR|CRITICAL)" | sev != "" [10m])) > 5
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Home Assistant is logging {{ $value }} errors in 10 minutes"
+            description: "HA core ERROR/CRITICAL lines in the HAOS journal. Check the HA core log panel on the Home Assistant dashboard; recurring errors usually mean a failing integration or an unreachable device."
         - alert: HomeAssistantUpdateAvailable
           expr: max(hass_update_state{app="home-assistant"}) == 1
           for: 1d
