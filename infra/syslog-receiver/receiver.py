@@ -20,6 +20,7 @@ import re
 import socketserver
 import threading
 import time
+import urllib.parse
 import urllib.request
 
 LOKI_URL = os.environ.get("LOKI_URL", "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push")
@@ -62,6 +63,61 @@ _dropped = {}
 
 _queue = []
 _lock = threading.Lock()
+
+# --------------------------------------------------------------------------
+# IP -> hostname map, so panels can show "beast12" instead of "192.168.12.181".
+#
+# dnsmasq logs DHCPACK(<iface>) <ip> <mac> <hostname>; the relay collects those
+# from Loki (not from its own socket) so every pod converges on the same map
+# instead of only knowing the leases that happened to land on its VIP hash.
+#   DHCP_STREAM   selector to scan for DHCPACK lines
+#   DHCP_LOOKBACK seconds of history to scan on each refresh
+#   HOSTMAP_REFRESH  seconds between refreshes
+#   HOSTMAP_EXTRA    "ip=name,ip=name" static entries
+# --------------------------------------------------------------------------
+DHCP_STREAM = os.environ.get(
+    "DHCP_STREAM", '{job="syslog", host="OpenWrt", app="dnsmasq-dhcp"}')
+DHCP_LOOKBACK = int(os.environ.get("DHCP_LOOKBACK", "86400"))
+HOSTMAP_REFRESH = float(os.environ.get("HOSTMAP_REFRESH", "300"))
+DHCPACK = re.compile(
+    r"DHCPACK\([^)]*\)\s+(?P<ip>\S+)\s+(?P<mac>\S+)(?:\s+(?P<name>\S+))?")
+SRC_RE = re.compile(r"(?:^|\s)SRC=(?P<ip>[^ ]+)")
+DST_RE = re.compile(r"(?:^|\s)DST=(?P<ip>[^ ]+)")
+_hosts = {}
+
+
+def _refresh_hosts():
+    global _hosts
+    base = LOKI_URL.split("/loki/api/v1/push")[0]
+    end = int(time.time())
+    url = base + "/loki/api/v1/query_range?" + urllib.parse.urlencode({
+        "query": DHCP_STREAM + ' |= "DHCPACK"',
+        "start": str(end - DHCP_LOOKBACK), "end": str(end), "limit": "5000"})
+    try:
+        with urllib.request.urlopen(url, timeout=20) as r:
+            data = json.load(r)
+    except Exception as e:
+        print(f"[hosts] refresh failed: {type(e).__name__}: {e}", flush=True)
+        return
+    m = {}
+    for s in data.get("data", {}).get("result", []):
+        for _ts, line in s.get("values", []):
+            d = DHCPACK.search(line)
+            if d and d.group("name"):
+                m[d.group("ip")] = d.group("name")
+    for pair in os.environ.get("HOSTMAP_EXTRA", "").split(","):
+        if "=" in pair:
+            ip, name = pair.split("=", 1)
+            m[ip.strip()] = name.strip()
+    with _lock:
+        _hosts = m
+    print(f"[hosts] {len(m)} ip->hostname entries", flush=True)
+
+
+def _hostmap_loop():
+    while True:
+        _refresh_hosts()
+        time.sleep(HOSTMAP_REFRESH)
 
 
 def dbg(*a):
@@ -116,6 +172,21 @@ def enqueue(line, peer):
                 _dropped[rx.pattern] = _dropped.get(rx.pattern, 0) + 1
             dbg("dropped", rx.pattern, msg[:80])
             return
+    with _lock:
+        hosts = _hosts
+    ms = SRC_RE.search(msg)
+    md = DST_RE.search(msg)
+    # hostname when known, otherwise the address itself, so a legend reads
+    # "beast12" for known hosts and "8.8.8.8" for everything else.
+    if ms:
+        labels["srchost"] = hosts.get(ms.group("ip"), ms.group("ip"))
+    if md:
+        labels["dsthost"] = hosts.get(md.group("ip"), md.group("ip"))
+    if labels.get("app") == "dnsmasq":
+        # "query[A] example.com from 192.168.12.42" -> clienthost
+        mc = re.search(r"\sfrom\s(?P<ip>[^ ]+)\s*$", msg)
+        if mc:
+            labels["clienthost"] = hosts.get(mc.group("ip"), mc.group("ip"))
     ts = time.time_ns()
     with _lock:
         _queue.append((ts, labels, msg))
@@ -197,6 +268,7 @@ def serve(protocol):
 if __name__ == "__main__":
     if DROPS:
         print("[filters]", [r.pattern for r in DROPS], flush=True)
+    threading.Thread(target=_hostmap_loop, daemon=True).start()
     threading.Thread(target=pusher, daemon=True).start()
     threading.Thread(target=serve, args=("udp",), daemon=True).start()
     threading.Thread(target=serve, args=("tcp",), daemon=True).start()

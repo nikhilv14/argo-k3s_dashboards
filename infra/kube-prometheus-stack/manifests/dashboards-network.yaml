@@ -372,13 +372,13 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum by (zone) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:.*SRC=(?<src>[^ ]+) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255)|(?<dst>[^ ]+))\" | zone != \"\" | noise = \"\" [5m]))"
+              "expr": "sum by (zone) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:.*SRC=(?<src>[^ ]+) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+))\" | zone != \"\" | noise = \"\" [5m]))"
             }
           ]
         },
         {
           "id": 12,
-          "title": "Firewall denies / 5m by source",
+          "title": "Firewall denies / 5m by host",
           "type": "timeseries",
           "gridPos": {
             "h": 8,
@@ -393,7 +393,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(8, sum by (src) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:.*SRC=(?<src>[^ ]+) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255)|(?<dst>[^ ]+))\" | zone != \"\" | noise = \"\" [5m])))"
+              "expr": "topk(8, sum by (srchost) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:.*SRC=(?<src>[^ ]+) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+))\" | zone != \"\" | noise = \"\" [5m])))"
             }
           ]
         },
@@ -414,7 +414,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(8, sum by (client) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | domain != \"\" [5m])))"
+              "expr": "topk(8, sum by (clienthost) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | client != \"\" [5m])))"
             }
           ]
         },
@@ -435,13 +435,13 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(10, sum by (dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:.*SRC=(?<src>[^ ]+) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255)|(?<dst>[^ ]+))\" | zone != \"\" | noise = \"\" [5m])))"
+              "expr": "topk(10, sum by (dsthost) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"reject (?<zone>[^ ]+) in:.*SRC=(?<src>[^ ]+) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+))\" | zone != \"\" | noise = \"\" [5m])))"
             }
           ]
         },
         {
           "id": 15,
-          "title": "Top queried domains (1h)",
+          "title": "Top queried domains (10m)",
           "type": "table",
           "gridPos": {
             "h": 10,
@@ -456,7 +456,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(20, sum by (domain) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | domain != \"\" [1h])))",
+              "expr": "topk(20, sum by (domain) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | domain != \"\" [10m])))",
               "instant": true,
               "range": false
             }
@@ -479,7 +479,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(15, sum by (client) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | domain != \"\" [1h])))",
+              "expr": "topk(15, sum by (clienthost) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"dnsmasq\"} | regexp \"query.(?<type>[A-Z]+). (?<domain>[^ ]+) from (?<client>[^ ]+)\" | client != \"\" [1h])))",
               "instant": true,
               "range": false
             }
@@ -487,7 +487,7 @@ data:
         },
         {
           "id": 17,
-          "title": "Allowed new connections / 5m by source",
+          "title": "Allowed new connections / 5m by host",
           "type": "timeseries",
           "gridPos": {
             "h": 8,
@@ -502,7 +502,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(8, sum by (src) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allowIN=(?<in>[^ ]*) OUT=[^ ]* .*SRC=(?:(?<nsrc>192[.]168[.]12[.]1)|(?<src>[^ ]+)) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | in != \"\" | src != \"\" | noise = \"\" | nsrc = \"\" [5m])))"
+              "expr": "topk(8, sum by (srchost) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allowIN=(?<in>[^ ]*) OUT=[^ ]* .*SRC=(?:(?<nsrc>192[.]168[.]12[.]1)|(?<src>[^ ]+)) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | in != \"\" | src != \"\" | noise = \"\" | nsrc = \"\" [5m])))"
             }
           ]
         },
@@ -523,7 +523,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(10, sum by (dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allowIN=(?<in>[^ ]*) OUT=[^ ]* .*SRC=(?:(?<nsrc>192[.]168[.]12[.]1)|(?<src>[^ ]+)) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | in != \"\" | src != \"\" | noise = \"\" | nsrc = \"\" [5m])))"
+              "expr": "topk(10, sum by (dsthost) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allowIN=(?<in>[^ ]*) OUT=[^ ]* .*SRC=(?:(?<nsrc>192[.]168[.]12[.]1)|(?<src>[^ ]+)) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | in != \"\" | src != \"\" | noise = \"\" | nsrc = \"\" [5m])))"
             }
           ]
         },
@@ -550,7 +550,7 @@ data:
         },
         {
           "id": 20,
-          "title": "Top allowed source -> destination (1h)",
+          "title": "Top allowed host -> destination (1h)",
           "type": "table",
           "gridPos": {
             "h": 10,
@@ -565,7 +565,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "topk(20, sum by (src, dst) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allowIN=(?<in>[^ ]*) OUT=[^ ]* .*SRC=(?:(?<nsrc>192[.]168[.]12[.]1)|(?<src>[^ ]+)) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | in != \"\" | src != \"\" | noise = \"\" | nsrc = \"\" [1h])))",
+              "expr": "topk(20, sum by (srchost, dsthost) (count_over_time({job=\"syslog\", host=\"OpenWrt\", app=\"kernel\"} | regexp \"allowIN=(?<in>[^ ]*) OUT=[^ ]* .*SRC=(?:(?<nsrc>192[.]168[.]12[.]1)|(?<src>[^ ]+)) DST=(?:(?<noise>255[.]255[.]255[.]255|ff02:[^ ]+|fe80:[^ ]+|192[.]168[.]12[.]255|192[.]168[.]12[.]62)|(?<dst>[^ ]+)) .*PROTO=(?<proto>[^ ]+) .*DPT=(?<dport>[^ ]+)\" | in != \"\" | src != \"\" | noise = \"\" | nsrc = \"\" [1h])))",
               "instant": true,
               "range": false
             }
