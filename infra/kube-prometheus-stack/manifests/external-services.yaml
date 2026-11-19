@@ -156,7 +156,9 @@ metadata:
     app.kubernetes.io/part-of: external-services
 spec:
   jobName: host-openwrt
-  module: icmp
+  # ICMP to the router is rejected by its fw4 input policy; the metrics endpoint is
+  # the honest reachability signal (the openwrt job scrapes the same port).
+  module: tcp_connect
   interval: 60s
   scrapeTimeout: 30s
   prober:
@@ -164,7 +166,7 @@ spec:
   targets:
     staticConfig:
       static:
-        - 192.168.12.1
+        - 192.168.12.1:9100
       labels:
         name: "OpenWrt router"
         host: "openwrt"

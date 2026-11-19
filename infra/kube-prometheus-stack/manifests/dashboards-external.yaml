@@ -69,7 +69,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(probe_success{group!=\"\"})",
+              "expr": "sum(probe_success{job=~\"comfyui|embeddings|local-llm|jellyfin-http|homeassistant-tcp|truenas-https|edge-https\"})",
               "legendFormat": "up",
               "instant": true
             }
@@ -115,7 +115,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "count(probe_success{group!=\"\"}) - sum(probe_success{group!=\"\"})",
+              "expr": "count(probe_success{job=~\"comfyui|embeddings|local-llm|jellyfin-http|homeassistant-tcp|truenas-https|edge-https\"}) - sum(probe_success{job=~\"comfyui|embeddings|local-llm|jellyfin-http|homeassistant-tcp|truenas-https|edge-https\"})",
               "legendFormat": "down",
               "instant": true
             }
@@ -157,7 +157,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "count(probe_success{group!=\"\"})",
+              "expr": "count(probe_success{job=~\"comfyui|embeddings|local-llm|jellyfin-http|homeassistant-tcp|truenas-https|edge-https\"})",
               "instant": true
             }
           ],
@@ -202,7 +202,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "sum(probe_success{job=~\"host-.*|pve-hosts-ping\"})",
+              "expr": "sum(probe_success{job=~\"host-.*|pve-hosts-ping|wan-ping|dns-resolve\"})",
               "instant": true
             }
           ],
@@ -281,7 +281,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "probe_success{group!=\"\"}",
+              "expr": "probe_success{job=~\"comfyui|embeddings|local-llm|jellyfin-http|homeassistant-tcp|truenas-https|edge-https\"}",
               "format": "table",
               "instant": true
             }
@@ -426,7 +426,7 @@ data:
           "targets": [
             {
               "refId": "A",
-              "expr": "probe_success{job=~\"host-.*|pve-hosts-ping|wan-ping\"}",
+              "expr": "probe_success{job=~\"host-.*|pve-hosts-ping|wan-ping|dns-resolve\"}",
               "format": "table",
               "instant": true
             }
