@@ -33,8 +33,8 @@ spec:
         - name: open-webui
           # Pinned, not :main. A floating tag plus a cached old digest let an image that did
           # not know the DB's alembic revision (9f6c2a8d1b43, added in v0.13.1) boot-loop on
-          # "Can't locate revision identified by ...". Bump deliberately: v0.13.3.
-          image: ghcr.io/open-webui/open-webui:v0.13.3
+          # "Can't locate revision identified by ...". Bump deliberately: v0.13.4.
+          image: ghcr.io/open-webui/open-webui:v0.13.4
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8080
