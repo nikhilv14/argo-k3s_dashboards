@@ -1,0 +1,83 @@
+# Cluster-wide app governance alerts.
+#  - ArgoCD sync/health: from argocd_app_info (scraped via infra/argocd-metrics).
+#  - GitOps drift: a workload that exists but is NOT tracked by any ArgoCD
+#    Application. ArgoCD stamps managed resources with the
+#    argocd.argoproj.io/tracking-id annotation; kube-state-metrics exposes it
+#    (metricAnnotationsAllowList in the kube-prometheus-stack values). A workload
+#    with no such annotation series is unmanaged. System namespaces and the ArgoCD
+#    bootstrap itself are excluded.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: k8s-apps
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: kube-prometheus-stack
+spec:
+  groups:
+    - name: k8s.apps.argocd
+      rules:
+        - alert: ArgoCDAppOutOfSync
+          expr: argocd_app_info{sync_status="OutOfSync"} > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ArgoCD app {{ $labels.name }} is OutOfSync"
+            description: "Application {{ $labels.name }} (project {{ $labels.project }}, repo {{ $labels.repo }}) has live state that differs from git. Either a manual change drifted it or a sync failed. Check the ArgoCD UI diff; re-sync or revert the manual change."
+
+        - alert: ArgoCDAppDegraded
+          expr: argocd_app_info{health_status="Degraded"} > 0
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "ArgoCD app {{ $labels.name }} is Degraded"
+            description: "Application {{ $labels.name }} reports Degraded health - a child resource is failing (crash loop, unavailable replicas, failed job). Open the app in ArgoCD to find the unhealthy resource."
+
+        - alert: ArgoCDAppMissing
+          expr: argocd_app_info{health_status="Missing"} > 0
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "ArgoCD app {{ $labels.name }} has Missing resources"
+            description: "Application {{ $labels.name }} expects resources that do not exist in the cluster. Something was deleted out-of-band or a sync never applied them. Re-sync the app."
+
+    - name: k8s.apps.drift
+      rules:
+        - alert: K8sUnmanagedDeployment
+          expr: |
+            kube_deployment_spec_replicas{namespace!~"kube-system|argocd|kube-public|kube-node-lease|local-path-storage|default"}
+            unless on (namespace, deployment)
+            kube_deployment_annotations{annotation_argocd_argoproj_io_tracking_id!=""}
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Deployment {{ $labels.namespace }}/{{ $labels.deployment }} is not managed by ArgoCD"
+            description: "This Deployment has no argocd.argoproj.io/tracking-id annotation, so no ArgoCD Application owns it. It was likely kubectl-applied directly. Adopt it into the GitOps repo or remove it."
+
+        - alert: K8sUnmanagedStatefulSet
+          expr: |
+            kube_statefulset_spec_replicas{namespace!~"kube-system|argocd|kube-public|kube-node-lease|local-path-storage|default"}
+            unless on (namespace, statefulset)
+            kube_statefulset_annotations{annotation_argocd_argoproj_io_tracking_id!=""}
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "StatefulSet {{ $labels.namespace }}/{{ $labels.statefulset }} is not managed by ArgoCD"
+            description: "This StatefulSet has no ArgoCD tracking-id annotation, so no Application owns it. Adopt it into the GitOps repo or remove it."
+
+        - alert: K8sUnmanagedDaemonSet
+          expr: |
+            kube_daemonset_status_desired_number_scheduled{namespace!~"kube-system|argocd|kube-public|kube-node-lease|local-path-storage|default"}
+            unless on (namespace, daemonset)
+            kube_daemonset_annotations{annotation_argocd_argoproj_io_tracking_id!=""}
+          for: 15m
+          labels:
+            severity: warning
+          annotations:
+            summary: "DaemonSet {{ $labels.namespace }}/{{ $labels.daemonset }} is not managed by ArgoCD"
+            description: "This DaemonSet has no ArgoCD tracking-id annotation, so no Application owns it. Adopt it into the GitOps repo or remove it."
