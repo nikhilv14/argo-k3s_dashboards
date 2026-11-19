@@ -1,0 +1,51 @@
+# Proxmox guest-inventory change alerts. PVE guests are not GitOps-managed, so the
+# analog of the k8s "unmanaged workload" alert is inventory change: a VM/LXC that
+# appears or disappears. Detection compares the current pve_guest_info set to the
+# set 30m ago, matched on the stable guest id (the pve-exporter runs once per node
+# but each reports the whole cluster, so everything is deduped with max by (id)).
+# The `and on() (count(... offset) > 0)` gate suppresses false "all guests are new"
+# alerts when the exporter had no data in the comparison window. A new/removed
+# guest fires for ~25m (offset 30m minus for 5m) then auto-resolves - one
+# notification to confirm the change is expected.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: pve-guests
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: kube-prometheus-stack
+spec:
+  groups:
+    - name: pve.guests.inventory
+      rules:
+        - alert: PVENewGuest
+          expr: |
+            (
+              max by (id, name, node, type, template) (pve_guest_info)
+              unless on (id)
+              max by (id) (pve_guest_info offset 30m)
+            )
+            and on ()
+            (count(pve_guest_info offset 30m) > 0)
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "New Proxmox guest {{ $labels.name }} ({{ $labels.id }}) on {{ $labels.node }}"
+            description: "A {{ $labels.type }} guest that was not present 30 minutes ago now exists (template={{ $labels.template }}). Confirm it was created intentionally; if not, investigate who/what provisioned it."
+
+        - alert: PVERemovedGuest
+          expr: |
+            (
+              max by (id, name, node, type, template) (pve_guest_info offset 30m)
+              unless on (id)
+              max by (id) (pve_guest_info)
+            )
+            and on ()
+            (count(pve_guest_info) > 0)
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "Proxmox guest {{ $labels.name }} ({{ $labels.id }}) removed from {{ $labels.node }}"
+            description: "A {{ $labels.type }} guest that existed 30 minutes ago is gone. Confirm it was deleted intentionally and that its data was backed up / migrated; if not, investigate."

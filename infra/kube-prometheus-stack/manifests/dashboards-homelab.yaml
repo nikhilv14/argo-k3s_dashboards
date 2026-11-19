@@ -10,7 +10,7 @@ metadata:
     grafana_dashboard: "1"
 data:
   homelab-quick-view.json: |
-    {
+        {
       "title": "Homelab Quick View",
       "uid": "homelab-quick-view",
       "tags": [
@@ -612,6 +612,90 @@ data:
                 ]
               }
             }
+          }
+        },
+        {
+          "id": 60,
+          "title": "PVE Guest Inventory (all VMs / LXC)",
+          "type": "table",
+          "gridPos": {
+            "h": 11,
+            "w": 24,
+            "x": 0,
+            "y": 44
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "datasource": {
+                "type": "prometheus",
+                "uid": "prometheus"
+              },
+              "expr": "max by (id,name,node,type,template) (pve_guest_info) * on (id) group_left max by (id) (pve_up{id=~\"qemu/.*|lxc/.*\"})",
+              "instant": true,
+              "range": false,
+              "format": "table"
+            }
+          ],
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "__name__": true,
+                  "container": true,
+                  "endpoint": true,
+                  "instance": true,
+                  "job": true,
+                  "pod": true,
+                  "service": true,
+                  "namespace": true
+                },
+                "renameByName": {
+                  "id": "ID",
+                  "name": "Name",
+                  "type": "Type",
+                  "node": "Node",
+                  "template": "Template",
+                  "Value": "Running"
+                },
+                "indexByName": {
+                  "id": 0,
+                  "name": 1,
+                  "type": 2,
+                  "node": 3,
+                  "template": 4,
+                  "Value": 5
+                }
+              }
+            }
+          ],
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "1": {
+                      "text": "running",
+                      "color": "green",
+                      "index": 0
+                    },
+                    "0": {
+                      "text": "stopped",
+                      "color": "red",
+                      "index": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "overrides": []
           }
         }
       ]
