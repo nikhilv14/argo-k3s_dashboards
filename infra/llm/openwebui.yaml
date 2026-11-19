@@ -21,6 +21,12 @@ metadata:
   namespace: llm
 spec:
   replicas: 1
+  # Single replica on a ReadWriteOnce PVC (truenas-iscsi): RollingUpdate tries to
+  # start the new pod before the old one releases the volume, so the new pod hangs
+  # forever on FailedAttachVolume ("Volume is already used by pod(s) ..."). Recreate
+  # terminates the old pod first so the volume detaches and the new pod can attach.
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: open-webui
