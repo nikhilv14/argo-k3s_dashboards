@@ -22,6 +22,9 @@ csiDriver:
 controller:
   # HA across the 3 control-plane/server nodes (node1, nuc, hp-g9).
   replicaCount: 3
+  # Pinned (chart default was :latest).
+  image:
+    tag: v1.9.5
 
 storageClasses:
   - name: truenas-nfs
@@ -39,6 +42,9 @@ storageClasses:
       detachedVolumesFromSnapshots: "false"
 
 node:
+  # Pinned (chart default was :latest).
+  image:
+    tag: v1.9.5
   tolerations:
     # The NFS node plugin deliberately tolerates lxc-no-iscsi on
     # k3s-worker-z690: it only installs the NFS mount helper, and plain

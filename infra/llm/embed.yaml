@@ -28,7 +28,7 @@ spec:
               mountPath: /models
       containers:
         - name: embed
-          image: ghcr.io/ggml-org/llama.cpp:server
+          image: ghcr.io/ggml-org/llama.cpp:server-b4731
           args:
             - --model
             - /models/bge-m3-Q8_0.gguf

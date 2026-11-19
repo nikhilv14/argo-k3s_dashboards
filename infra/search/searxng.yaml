@@ -28,7 +28,7 @@ spec:
                       - k3s-worker-z690
       containers:
         - name: searxng
-          image: docker.io/searxng/searxng:latest
+          image: docker.io/searxng/searxng:2026.11.19-368baa340
           ports:
             - containerPort: 8080
           env:
