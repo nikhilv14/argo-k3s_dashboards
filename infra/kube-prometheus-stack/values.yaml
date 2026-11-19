@@ -237,3 +237,8 @@ kubeApiServer:
 # never finds targets and its rules can't fire.
 kubeEtcd:
   enabled: false
+
+# node-exporter: the kps 93.4.0 chart still ships v1.12.1; pin v1.13.0 explicitly.
+prometheus-node-exporter:
+  image:
+    tag: v1.13.0

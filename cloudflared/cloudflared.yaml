@@ -24,7 +24,7 @@ spec:
       dnsPolicy: Default
       containers:
       - name: cloudflared
-        image: cloudflare/cloudflared:2026.9.3
+        image: cloudflare/cloudflared:2026.11.1
         args:
         - tunnel
         - --no-autoupdate

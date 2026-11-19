@@ -14,7 +14,7 @@ spec:
   sources:
     - repoURL: https://charts.jetstack.io
       chart: cert-manager
-      targetRevision: v1.21.2
+      targetRevision: v1.21.3
       helm:
         valueFiles:
           - $values/infra/cert-manager/values.yaml
@@ -115,8 +115,8 @@ spec:
   project: infra
   source:
     repoURL: https://github.com/kubernetes-csi/csi-driver-nfs.git
-    targetRevision: v4.12.1
-    path: charts/v4.12.1/csi-driver-nfs
+    targetRevision: v4.13.6
+    path: charts/v4.13.6/csi-driver-nfs
   destination:
     server: https://kubernetes.default.svc
     namespace: kube-system
@@ -137,7 +137,7 @@ spec:
   sources:
     - repoURL: https://kubernetes.github.io/ingress-nginx
       chart: ingress-nginx
-      targetRevision: 4.14.1
+      targetRevision: 4.15.1
       helm:
         valueFiles:
           - $values/infra/ingress-nginx/values.yaml
@@ -171,7 +171,7 @@ spec:
   sources:
     - repoURL: https://prometheus-community.github.io/helm-charts
       chart: kube-prometheus-stack
-      targetRevision: 92.1.0
+      targetRevision: 93.4.0
       helm:
         valueFiles:
           - $values/infra/kube-prometheus-stack/values.yaml
@@ -205,7 +205,7 @@ spec:
   sources:
     - repoURL: https://grafana.github.io/helm-charts
       chart: loki
-      targetRevision: 7.3.0
+      targetRevision: 7.7.0
       helm:
         valueFiles:
           - $values/infra/loki/values.yaml
