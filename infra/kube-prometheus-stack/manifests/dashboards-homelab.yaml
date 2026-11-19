@@ -10,7 +10,7 @@ metadata:
     grafana_dashboard: "1"
 data:
   homelab-quick-view.json: |
-        {
+    {
       "title": "Homelab Quick View",
       "uid": "homelab-quick-view",
       "tags": [
