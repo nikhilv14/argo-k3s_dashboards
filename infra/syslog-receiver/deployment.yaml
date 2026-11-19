@@ -39,6 +39,12 @@ spec:
         - name: receiver
           image: python:3.12-alpine
           command: ["python3", "-u", "/opt/receiver.py"]
+          env:
+            # Trailing-dot FQDN: with the pod's inherited `search ... lan` + ndots:5,
+            # the non-FQDN name also resolves as ...cluster.local.lan (NXDOMAIN forwarded
+            # to the router, ~173k queries/day). The trailing dot stops search appending.
+            - name: LOKI_URL
+              value: http://loki.monitoring.svc.cluster.local.:3100/loki/api/v1/push
           ports:
             - name: syslog-udp
               containerPort: 514

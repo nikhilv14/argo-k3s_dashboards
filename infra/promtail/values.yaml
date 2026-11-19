@@ -2,7 +2,7 @@
 # plus systemd-journald (k3s service logs, kernel, sshd) from the k3s nodes.
 config:
   clients:
-    - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+    - url: http://loki.monitoring.svc.cluster.local.:3100/loki/api/v1/push
   snippets:
     # k3s system logs: journald (k3s.service, kernel, sshd, containerd).
     # Requires the journal hostPath volumes below.

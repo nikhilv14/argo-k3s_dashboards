@@ -7,7 +7,7 @@ data:
   PVE_NODES: pve=192.168.12.201,pve-nuc10=192.168.12.220,pve-hp-g9=192.168.12.130
   PVE_PORT: '8006'
   PVE_VERIFY_SSL: 'false'
-  LOKI_URL: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+  LOKI_URL: http://loki.monitoring.svc.cluster.local.:3100/loki/api/v1/push
   PVE_USER: nikhil@pve
   PVE_TOKEN_NAME: grafana
   PVE_CLUSTER: beast-cluster

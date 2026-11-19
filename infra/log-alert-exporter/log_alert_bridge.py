@@ -32,7 +32,7 @@ import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-LOKI_URL = os.environ.get("LOKI_URL", "http://loki.monitoring.svc:3100").rstrip("/")
+LOKI_URL = os.environ.get("LOKI_URL", "http://loki.monitoring.svc.cluster.local.:3100").rstrip("/")
 RULES_FILE = os.environ.get("RULES_FILE", "/etc/log-alert/rules.json")
 PORT = int(os.environ.get("METRICS_PORT", "9223"))
 REFRESH = int(os.environ.get("REFRESH_SECS", "60"))

@@ -226,7 +226,7 @@ spec:
           command: ["python3", "-u", "/opt/log_alert_bridge.py"]
           env:
             - name: LOKI_URL
-              value: http://loki.monitoring.svc:3100
+              value: http://loki.monitoring.svc.cluster.local.:3100
             - name: RULES_FILE
               value: /etc/log-alert/rules.json
             - name: METRICS_PORT
