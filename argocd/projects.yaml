@@ -93,6 +93,9 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: search
       server: https://kubernetes.default.svc
+    # argocd-metrics: Service + ServiceMonitor for the application-controller metrics
+    - namespace: argocd
+      server: https://kubernetes.default.svc
   sourceRepos:
     - https://github.com/nikhilv14/argo-k3s_dashboards.git
     - https://charts.longhorn.io
