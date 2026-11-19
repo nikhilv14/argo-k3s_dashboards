@@ -697,6 +697,124 @@ data:
             },
             "overrides": []
           }
+        },
+        {
+          "id": 901,
+          "type": "row",
+          "title": "External (non-k8s) services",
+          "gridPos": {
+            "h": 3,
+            "w": 24,
+            "x": 0,
+            "y": 55
+          },
+          "panels": [],
+          "description": "Services and hosts outside Kubernetes - see the External Services dashboard"
+        },
+        {
+          "id": 902,
+          "type": "stat",
+          "title": "External services up",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 8,
+            "x": 0,
+            "y": 58
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(probe_success{job=~\"comfyui|embeddings|local-llm|jellyfin-http|homeassistant-tcp|truenas-https|edge-https\"})",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 903,
+          "type": "stat",
+          "title": "External services down",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 8,
+            "x": 8,
+            "y": 58
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "count(probe_success{job=~\"comfyui|embeddings|local-llm|jellyfin-http|homeassistant-tcp|truenas-https|edge-https\"}) - sum(probe_success{job=~\"comfyui|embeddings|local-llm|jellyfin-http|homeassistant-tcp|truenas-https|edge-https\"})",
+              "instant": true
+            }
+          ]
+        },
+        {
+          "id": 904,
+          "type": "text",
+          "title": "External Services dashboard",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "gridPos": {
+            "h": 4,
+            "w": 8,
+            "x": 16,
+            "y": 58
+          },
+          "options": {
+            "mode": "markdown",
+            "content": "[Open External Services dashboard](/d/external-services)\n\nProbes + inventory for Proxmox guests, bare-metal appliances and the GPU/compute endpoints."
+          }
         }
       ]
     }

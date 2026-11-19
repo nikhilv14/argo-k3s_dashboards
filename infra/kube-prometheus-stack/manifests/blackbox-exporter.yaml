@@ -234,8 +234,9 @@ spec:
     staticConfig:
       static:
         - 192.168.12.1
-
       labels:
-        name: "OpenWrt DNS"
+        # ICMP to the router is rejected by its fw4 input policy, so DNS is the
+        # liveliness test: this asks 192.168.12.1 to resolve dash.daemonagent.net.
+        name: "OpenWrt router"
         host: "openwrt"
         group: "network"
