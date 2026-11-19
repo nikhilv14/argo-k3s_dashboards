@@ -93,6 +93,14 @@ prometheus:
     # release=<helm release>) drops them and probe_success never appears.
     probeSelectorNilUsesHelmValues: false
 
+# Expose the ArgoCD tracking-id annotation on workloads so we can alert on any
+# deployment/statefulset/daemonset that is NOT managed by ArgoCD (GitOps drift).
+kube-state-metrics:
+  metricAnnotationsAllowList:
+    - deployments=[argocd.argoproj.io/tracking-id]
+    - statefulsets=[argocd.argoproj.io/tracking-id]
+    - daemonsets=[argocd.argoproj.io/tracking-id]
+
 alertmanager:
   alertmanagerSpec:
     resources:

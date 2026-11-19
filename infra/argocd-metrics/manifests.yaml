@@ -1,0 +1,35 @@
+# ArgoCD application-controller metrics. ArgoCD exposes argocd_app_info /
+# argocd_app_sync_status / argocd_app_health_status on the application-controller
+# (port 8082), but ships no Service for it, so we add one plus a ServiceMonitor.
+# Prometheus here uses serviceMonitorSelectorNilUsesHelmValues=false, so a
+# ServiceMonitor in the argocd namespace is discovered cluster-wide.
+apiVersion: v1
+kind: Service
+metadata:
+  name: argocd-application-controller-metrics
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-application-controller-metrics
+spec:
+  selector:
+    app.kubernetes.io/name: argocd-application-controller
+  ports:
+    - name: metrics
+      port: 8082
+      targetPort: 8082
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: argocd-application-controller
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: argocd-application-controller-metrics
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: argocd-application-controller-metrics
+  endpoints:
+    - port: metrics
+      interval: 60s
+      scrapeTimeout: 30s
