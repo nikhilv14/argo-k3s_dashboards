@@ -1,0 +1,464 @@
+# External (non-k8s) service inventory + health. Probes live in external-services.yaml;
+# PVE guests are host-covered by pve_up / pve-exporter (see homelab-quick-view too).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-external
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: external-services
+    grafana_dashboard: "1"
+data:
+  external-services.json: |
+    {
+      "uid": "external-services",
+      "title": "External Services (non-k8s)",
+      "description": "Inventory + health of services and hosts that run outside Kubernetes (Proxmox guests, bare-metal appliances). Service status comes from blackbox probes; PVE guests from pve-exporter.",
+      "tags": [
+        "homelab",
+        "external"
+      ],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "version": 1,
+      "refresh": "30s",
+      "panels": [
+        {
+          "id": 1,
+          "type": "row",
+          "title": "Overview",
+          "gridPos": {
+            "h": 3,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          },
+          "panels": []
+        },
+        {
+          "id": 2,
+          "type": "stat",
+          "title": "Services up",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 0,
+            "y": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [],
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "justifyMode": "auto",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(probe_success{group!=\"\"})",
+              "legendFormat": "up",
+              "instant": true
+            }
+          ],
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Services down",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 6,
+            "y": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "count(probe_success{group!=\"\"}) - sum(probe_success{group!=\"\"})",
+              "legendFormat": "down",
+              "instant": true
+            }
+          ],
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Total probed",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 12,
+            "y": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "none",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "count(probe_success{group!=\"\"})",
+              "instant": true
+            }
+          ],
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "id": 5,
+          "type": "stat",
+          "title": "Bare-metal hosts up",
+          "gridPos": {
+            "h": 4,
+            "w": 6,
+            "x": 18,
+            "y": 3
+          },
+          "fieldConfig": {
+            "defaults": {
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "red",
+                    "value": 1
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "textMode": "auto"
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "sum(probe_success{job=~\"host-.*|pve-hosts-ping\"})",
+              "instant": true
+            }
+          ],
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "id": 6,
+          "type": "row",
+          "title": "Services",
+          "gridPos": {
+            "h": 3,
+            "w": 24,
+            "x": 0,
+            "y": 7
+          },
+          "panels": []
+        },
+        {
+          "id": 7,
+          "type": "table",
+          "title": "Service status",
+          "description": "One row per external service probe. group!=\"\" selects the external probes (k8s app probes are unlabelled).",
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 10
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "DOWN",
+                      "color": "red",
+                      "index": 0
+                    },
+                    "1": {
+                      "text": "UP",
+                      "color": "green",
+                      "index": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true
+          },
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "job": true
+                },
+                "indexByName": {},
+                "renameByName": {
+                  "Value": "Status",
+                  "instance": "Endpoint",
+                  "host": "Host",
+                  "name": "Service",
+                  "group": "Group"
+                }
+              }
+            }
+          ],
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_success{group!=\"\"}",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "id": 8,
+          "type": "row",
+          "title": "Hosts",
+          "gridPos": {
+            "h": 3,
+            "w": 24,
+            "x": 0,
+            "y": 22
+          },
+          "panels": []
+        },
+        {
+          "id": 9,
+          "type": "table",
+          "title": "PVE guests (all VMs / LXC)",
+          "description": "Host state from pve-exporter; running = pve_up.",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 0,
+            "y": 25
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "stopped",
+                      "color": "red",
+                      "index": 0
+                    },
+                    "1": {
+                      "text": "running",
+                      "color": "green",
+                      "index": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true
+          },
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "template": true
+                },
+                "renameByName": {
+                  "Value": "Running",
+                  "id": "ID",
+                  "name": "Name",
+                  "node": "Node",
+                  "type": "Type"
+                }
+              }
+            }
+          ],
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "max by (id,name,node,type) (pve_guest_info) * on (id) group_left max by (id) (pve_up{id=~\"qemu/.*|lxc/.*\"})",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "id": 10,
+          "type": "table",
+          "title": "Bare-metal + PVE node ping",
+          "gridPos": {
+            "h": 9,
+            "w": 12,
+            "x": 12,
+            "y": 25
+          },
+          "fieldConfig": {
+            "defaults": {
+              "mappings": [
+                {
+                  "type": "value",
+                  "options": {
+                    "0": {
+                      "text": "DOWN",
+                      "color": "red",
+                      "index": 0
+                    },
+                    "1": {
+                      "text": "UP",
+                      "color": "green",
+                      "index": 1
+                    }
+                  }
+                }
+              ]
+            },
+            "overrides": []
+          },
+          "options": {
+            "showHeader": true
+          },
+          "transformations": [
+            {
+              "id": "organize",
+              "options": {
+                "excludeByName": {
+                  "Time": true,
+                  "job": true
+                },
+                "renameByName": {
+                  "Value": "Status",
+                  "instance": "Address",
+                  "host": "Host",
+                  "name": "Name",
+                  "group": "Group"
+                }
+              }
+            }
+          ],
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "probe_success{job=~\"host-.*|pve-hosts-ping|wan-ping\"}",
+              "format": "table",
+              "instant": true
+            }
+          ],
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        },
+        {
+          "id": 11,
+          "type": "text",
+          "title": "Related dashboards",
+          "gridPos": {
+            "h": 5,
+            "w": 24,
+            "x": 0,
+            "y": 34
+          },
+          "options": {
+            "mode": "markdown",
+            "code": {
+              "language": "json",
+              "showMiniMap": false,
+              "showLineNumbers": false
+            },
+            "content": "- [Network & Router](/d/network-router) - OpenWrt, WAN, DNS\n- [Jellyfin](/d/jellyfin-users) - media-stack\n- [Home Assistant](/d/home-assistant) - HAOS\n- [Immich](/d/immich-system) - k8s\n- [Homelab Quick View](/d/homelab-quick-view) - full inventory"
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          }
+        }
+      ]
+    }

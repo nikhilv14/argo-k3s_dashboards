@@ -1,0 +1,219 @@
+# External (non-k8s) service inventory + blackbox probes.
+# The ConfigMap below is the human-readable CMDB; the Probe objects are what
+# actually feed Prometheus. PVE *guests* are host-covered by pve_up + pve-exporter
+# (running state, CPU/mem/disk per guest), so only bare-metal hosts get ICMP here.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: external-services-inventory
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: external-services
+data:
+  inventory.json: |
+    {
+      "generated_from": "pve-exporter + repo, 2026-11-19",
+      "apps": [
+        {
+          "id": "comfyui",
+          "name": "ComfyUI (image gen)",
+          "host": "gpu-p1000",
+          "group": "compute",
+          "endpoint": "http://192.168.12.245:8188/",
+          "module": "http_2xx",
+          "note": "Open WebUI image generation backend; VM 114 ubuntu@192.168.12.245"
+        },
+        {
+          "id": "embeddings",
+          "name": "Embedding server",
+          "host": "gpu-p1000",
+          "group": "compute",
+          "endpoint": "http://192.168.12.245:8090/v1/models",
+          "module": "http_2xx",
+          "note": "llama-embed-gpu.service on VM 114; RAG embeddings for Open WebUI"
+        },
+        {
+          "id": "local-llm",
+          "name": "Local LLM + coder (27B)",
+          "host": "k3s-worker-z690",
+          "group": "compute",
+          "endpoint": "http://192.168.12.243:8081/v1/models",
+          "module": "http_2xx",
+          "note": "Local 27B on the 5060 Ti + coding-agent backend; qemu/109"
+        }
+      ],
+      "baremetal_hosts": [
+        {
+          "id": "openwrt",
+          "name": "OpenWrt router",
+          "ip": "192.168.12.1",
+          "group": "network",
+          "note": "Gateway/DNS/DHCP; metrics via openwrt job + network-router dashboard"
+        },
+        {
+          "id": "truenas",
+          "name": "TrueNAS Scale",
+          "ip": "192.168.12.50",
+          "group": "storage",
+          "note": "NAS; backup coverage via truenas-azure-backup-audit"
+        },
+        {
+          "id": "home-assistant",
+          "name": "Home Assistant (HAOS)",
+          "ip": "192.168.12.112",
+          "group": "home",
+          "note": "odroid-m1s appliance, not a PVE guest; metrics job home-assistant"
+        }
+      ],
+      "pve_nodes": [
+        "192.168.12.201",
+        "192.168.12.220",
+        "192.168.12.130"
+      ],
+      "pve_guests": "host state via pve_up / pve-exporter; see homelab-quick-view inventory table"
+    }
+---
+# ComfyUI (image gen) - Open WebUI image generation backend; VM 114 ubuntu@192.168.12.245
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: comfyui
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: external-services
+spec:
+  jobName: comfyui
+  interval: 60s
+  scrapeTimeout: 30s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - http://192.168.12.245:8188/
+      labels:
+        name: "ComfyUI (image gen)"
+        host: "gpu-p1000"
+        group: "compute"
+---
+# Embedding server - llama-embed-gpu.service on VM 114; RAG embeddings for Open WebUI
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: embeddings
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: external-services
+spec:
+  jobName: embeddings
+  interval: 60s
+  scrapeTimeout: 30s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - http://192.168.12.245:8090/v1/models
+      labels:
+        name: "Embedding server"
+        host: "gpu-p1000"
+        group: "compute"
+---
+# Local LLM + coder (27B) - Local 27B on the 5060 Ti + coding-agent backend; qemu/109
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: local-llm
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: external-services
+spec:
+  jobName: local-llm
+  interval: 60s
+  scrapeTimeout: 30s
+  module: http_2xx
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - http://192.168.12.243:8081/v1/models
+      labels:
+        name: "Local LLM + coder (27B)"
+        host: "k3s-worker-z690"
+        group: "compute"
+---
+# OpenWrt router - Gateway/DNS/DHCP; metrics via openwrt job + network-router dashboard
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: host-openwrt
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: external-services
+spec:
+  jobName: host-openwrt
+  module: icmp
+  interval: 60s
+  scrapeTimeout: 30s
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - 192.168.12.1
+      labels:
+        name: "OpenWrt router"
+        host: "openwrt"
+        group: "network"
+---
+# TrueNAS Scale - NAS; backup coverage via truenas-azure-backup-audit
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: host-truenas
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: external-services
+spec:
+  jobName: host-truenas
+  module: icmp
+  interval: 60s
+  scrapeTimeout: 30s
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - 192.168.12.50
+      labels:
+        name: "TrueNAS Scale"
+        host: "truenas"
+        group: "storage"
+---
+# Home Assistant (HAOS) - odroid-m1s appliance, not a PVE guest; metrics job home-assistant
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: host-home-assistant
+  namespace: monitoring
+  labels:
+    app.kubernetes.io/part-of: external-services
+spec:
+  jobName: host-home-assistant
+  module: icmp
+  interval: 60s
+  scrapeTimeout: 30s
+  prober:
+    url: blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - 192.168.12.112
+      labels:
+        name: "Home Assistant (HAOS)"
+        host: "home-assistant"
+        group: "home"

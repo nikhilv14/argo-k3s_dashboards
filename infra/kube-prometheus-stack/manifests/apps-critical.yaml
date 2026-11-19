@@ -74,6 +74,10 @@ spec:
     staticConfig:
       static:
         - http://192.168.12.142:8096/health
+      labels:
+        name: "Jellyfin"
+        host: "media-stack"
+        group: "media"
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: PrometheusRule
@@ -251,3 +255,7 @@ spec:
     staticConfig:
       static:
         - 192.168.12.112:8123
+      labels:
+        name: "Home Assistant"
+        host: "odroid-m1s"
+        group: "home"

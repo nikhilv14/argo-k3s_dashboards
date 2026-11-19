@@ -141,6 +141,10 @@ spec:
       static:
         - 1.1.1.1
         - 8.8.8.8
+      labels:
+        name: "WAN DNS"
+        host: "wan"
+        group: "network"
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: Probe
@@ -160,6 +164,10 @@ spec:
         - 192.168.12.201
         - 192.168.12.220
         - 192.168.12.130
+      labels:
+        name: "PVE nodes"
+        host: "pve"
+        group: "infra"
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: Probe
@@ -177,6 +185,10 @@ spec:
     staticConfig:
       static:
         - https://192.168.12.50/
+      labels:
+        name: "TrueNAS Scale"
+        host: "truenas"
+        group: "storage"
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: Probe
@@ -201,6 +213,10 @@ spec:
         - https://grafana.daemonagent.net/
         - https://victron.daemonagent.net/
         - https://photos.daemonagent.net/
+      labels:
+        name: "Public edge (Cloudflare)"
+        host: "edge"
+        group: "public"
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: Probe
@@ -218,3 +234,8 @@ spec:
     staticConfig:
       static:
         - 192.168.12.1
+
+      labels:
+        name: "OpenWrt DNS"
+        host: "openwrt"
+        group: "network"

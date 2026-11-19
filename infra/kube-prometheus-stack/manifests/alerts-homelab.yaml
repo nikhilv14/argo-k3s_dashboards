@@ -203,14 +203,24 @@ spec:
       rules:
         - alert: ProbeTargetDown
           # probe_success==0 means the probe ran and the target failed;
-          # probe_success absent means we are not scraping (BlindMonitor below).
+          # probe_success absent means we are not scraping (ExternalProbesAbsent below).
           expr: probe_success == 0
           for: 5m
           labels:
             severity: critical
           annotations:
-            summary: "{{ $labels.job }} probe failing for {{ $labels.instance }}"
-            description: "blackbox probe {{ $labels.job }} to {{ $labels.instance }} has failed for 5 minutes."
+            summary: "{{ if $labels.name }}{{ $labels.name }}{{ else }}{{ $labels.job }}{{ end }} probe failing for {{ $labels.instance }}"
+            description: "{{ if $labels.name }}{{ $labels.name }} ({{ $labels.group }}){{ else }}blackbox probe {{ $labels.job }}{{ end }} to {{ $labels.instance }} has failed for 5 minutes."
+        - alert: ExternalProbesAbsent
+          # No external probe series at all = blackbox-exporter down or every external
+          # Probe removed; either way the external inventory above is blind.
+          expr: absent(probe_success{group!=""})
+          for: 10m
+          labels:
+            severity: critical
+          annotations:
+            summary: "No external service probe series - external inventory is blind"
+            description: "absent(probe_success{group!=\"\"}) for 10m. Check blackbox-exporter and the external Probe objects."
         - alert: ProbeHighLatency
           expr: probe_duration_seconds > 2
           for: 15m
