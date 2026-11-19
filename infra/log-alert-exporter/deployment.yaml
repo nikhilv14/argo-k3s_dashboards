@@ -99,7 +99,12 @@ data:
 
 
     def collect():
-        values, errors = {}, {}
+        values = {}
+        # Cumulative across cycles: a fresh dict here would reset the "counter" every
+        # 60s, making rate()/increase() on log_alert_eval_errors_total meaningless and
+        # firing LogAlertBridgeEvalErrors on a single transient Loki blip.
+        with _lock:
+            errors = dict(STATE.get("errors", {}))
         for rule in STATE["rules"]:
             name = rule["name"]
             try:

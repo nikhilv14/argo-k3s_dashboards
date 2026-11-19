@@ -100,8 +100,10 @@ spec:
             description: "log-alert-exporter is not being scraped, so every log-derived alert above is blind. Check the pod in namespace monitoring."
 
         - alert: LogAlertBridgeEvalErrors
-          expr: rate(log_alert_eval_errors_total[15m]) > 0
-          for: 15m
+          # increase()>3 ignores a single transient Loki blip (+1/cycle) and only
+          # fires on sustained evaluation failure (bridge blind to log alerts).
+          expr: increase(log_alert_eval_errors_total[15m]) > 3
+          for: 5m
           labels:
             severity: warning
           annotations:
