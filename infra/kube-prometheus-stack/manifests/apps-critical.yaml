@@ -171,13 +171,13 @@ spec:
             summary: "{{ $value }} Home Assistant entities are unavailable"
             description: "Entities reporting hass_entity_available == 0. Usually an integration/device that dropped off the network; check Settings > Devices & Services for errored entries."
         - alert: HomeAssistantUpdateAvailable
-          expr: max(hass_update_state{app="home-assistant"}) == 1
+          expr: 'max(hass_update_state{app="home-assistant", entity=~"update\.home_assistant_.*"}) == 1'
           for: 1d
           labels:
             severity: info
           annotations:
             summary: "A Home Assistant update is available"
-            description: "hass_update_state reports a pending update (core or supervisor). Read the release notes before applying."
+            description: "hass_update_state reports a pending core, supervisor or OS update (add-ons are excluded - they are not HA updates). Read the release notes before applying."
 
         - alert: HomeAssistantCoreDown
           expr: probe_success{job="homeassistant-tcp"} == 0

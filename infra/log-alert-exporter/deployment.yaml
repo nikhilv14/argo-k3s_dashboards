@@ -175,7 +175,7 @@ data:
       "rules": [
         {
           "name": "OpenWebUIOAuthFailures",
-          "expr": "sum(count_over_time({job=\"llm/open-webui\"} | regexp \"(?P<sev>Failed to refresh token|Token refresh failed|No OAuth session found)\" | sev != \"\" [15m]))"
+          "expr": "sum(count_over_time({job=\"llm/open-webui\"} | regexp \"(?P<sev>Failed to refresh token|Token refresh failed)\" | sev != \"\" [15m]))"
         },
         {
           "name": "OpenWebUIHTTP5xx",

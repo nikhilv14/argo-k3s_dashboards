@@ -25,7 +25,7 @@ spec:
             severity: warning
           annotations:
             summary: "Open WebUI OAuth sessions are failing ({{ $value }} in 15m)"
-            description: "Open WebUI logs 'Failed to refresh token', 'Token refresh failed' or 'No OAuth session found'. Users are being logged out or cannot reach the OIDC provider. Check Settings > Security in Open WebUI and the Ory/Google OAuth client, then the dashboard's error panel."
+            description: "Open WebUI logs 'Failed to refresh token' or 'Token refresh failed' - the OIDC token could not be refreshed, so users will be logged out. Check Settings > Security in Open WebUI and the Ory/Google OAuth client, then the dashboard's error panel. (OWUI also logs 'No OAuth session found' as a benign fallback when a valid local session has no OAuth row; that pattern is deliberately not alerted on.)"
 
         - alert: OpenWebUIHTTP5xx
           expr: log_alert_value{rule="OpenWebUIHTTP5xx"} >= 3
