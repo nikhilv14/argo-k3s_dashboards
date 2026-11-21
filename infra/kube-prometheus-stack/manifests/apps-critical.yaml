@@ -171,7 +171,7 @@ spec:
             summary: "{{ $value }} Home Assistant entities are unavailable"
             description: "Entities reporting hass_entity_available == 0. Usually an integration/device that dropped off the network; check Settings > Devices & Services for errored entries."
         - alert: HomeAssistantUpdateAvailable
-          expr: 'max(hass_update_state{app="home-assistant", entity=~"update\.home_assistant_.*"}) == 1'
+          expr: 'max(hass_update_state{app="home-assistant", entity=~"update[.]home_assistant_.*"}) == 1'
           for: 1d
           labels:
             severity: info
