@@ -16,6 +16,10 @@ spec:
       labels:
         app: llm-embed-cpu
     spec:
+      # Pinned off k3s-worker-z690: that box is becoming the ComfyUI host, and an
+      # image-generation spike must not be able to starve retrieval failover.
+      nodeSelector:
+        kubernetes.io/hostname: k3s-server-nuc
       initContainers:
         - name: fetch-model
           image: busybox:1.36
