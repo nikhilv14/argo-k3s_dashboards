@@ -18,8 +18,11 @@ spec:
     spec:
       # Pinned off k3s-worker-z690: that box is becoming the ComfyUI host, and an
       # image-generation spike must not be able to starve retrieval failover.
+      # k3s-server-nuc was tried first and crashes (exit 139): its QEMU virtual CPU
+      # exposes no AVX2/F16C, which this llama.cpp build needs. hp-g9 is bare-metal
+      # passthrough (i5-12500, AVX2 present).
       nodeSelector:
-        kubernetes.io/hostname: k3s-server-nuc
+        kubernetes.io/hostname: k3s-server-hp-g9
       initContainers:
         - name: fetch-model
           image: busybox:1.36
