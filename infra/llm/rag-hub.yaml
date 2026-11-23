@@ -58,3 +58,36 @@ spec:
     - hosts:
         - rag.home
       secretName: rag-hub-tls
+---
+# MCP (SSE) adapter for Khoj's MCP client. Runs on dev-env .118, exposed by a
+# manual EndpointSlice because ArgoCD excludes EndpointSlice resources.
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-mcp
+  namespace: llm
+spec:
+  ports:
+    - name: sse
+      port: 8766
+      targetPort: 8766
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: rag-mcp-manual
+  namespace: llm
+  labels:
+    kubernetes.io/service-name: rag-mcp
+    endpointslice.kubernetes.io/managed-by: user
+addressType: IPv4
+ports:
+  - name: sse
+    port: 8766
+    protocol: TCP
+endpoints:
+  - addresses:
+      - 192.168.12.118
+    conditions:
+      ready: true
