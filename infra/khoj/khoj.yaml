@@ -1,0 +1,187 @@
+# Khoj 2.0 beta, self-hosted. Postgres/pgvector data on NAS PVC.
+# Chat goes through the local router (cloud alias); embeddings are configured
+# post-install via SearchModelConfig to use the central RAG hub endpoint.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: khoj-db
+  namespace: khoj
+spec:
+  serviceName: khoj-db
+  replicas: 1
+  selector:
+    matchLabels:
+      app: khoj-db
+  template:
+    metadata:
+      labels:
+        app: khoj-db
+    spec:
+      containers:
+        - name: db
+          image: docker.io/pgvector/pgvector:pg15
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              value: postgres
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: khoj-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          readinessProbe:
+            exec:
+              command: ["pg_isready", "-U", "postgres"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: truenas-iscsi
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: khoj-db
+  namespace: khoj
+spec:
+  selector:
+    app: khoj-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: khoj
+  namespace: khoj
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: khoj
+  template:
+    metadata:
+      labels:
+        app: khoj
+    spec:
+      containers:
+        - name: khoj
+          image: ghcr.io/khoj-ai/khoj:2.0.0-beta.28
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 42110
+          env:
+            - name: POSTGRES_DB
+              value: postgres
+            - name: POSTGRES_USER
+              value: postgres
+            - name: POSTGRES_HOST
+              value: khoj-db
+            - name: POSTGRES_PORT
+              value: "5432"
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: khoj-secret
+                  key: POSTGRES_PASSWORD
+            - name: KHOJ_DJANGO_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: khoj-secret
+                  key: KHOJ_DJANGO_SECRET_KEY
+            - name: KHOJ_ADMIN_EMAIL
+              value: nikhil@daemonagent.net
+            - name: KHOJ_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: khoj-secret
+                  key: KHOJ_ADMIN_PASSWORD
+            - name: KHOJ_DEBUG
+              value: "False"
+            - name: KHOJ_NO_HTTPS
+              value: "True"
+            - name: KHOJ_DOMAIN
+              value: khoj.home
+            - name: KHOJ_ALLOWED_DOMAIN
+              value: khoj.home
+            - name: OPENAI_BASE_URL
+              value: http://llm-router.llm.svc.cluster.local:8085/v1
+            - name: KHOJ_DEFAULT_CHAT_MODEL
+              value: cloud
+            - name: KHOJ_SEARXNG_URL
+              value: http://searxng.search.svc.cluster.local:8080
+            - name: RAG_HUB_URL
+              value: http://rag-hub.llm.svc.cluster.local:8765
+          volumeMounts:
+            - name: config
+              mountPath: /root/.khoj
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 42110
+            initialDelaySeconds: 40
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              memory: 3Gi
+      volumes:
+        - name: config
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: khoj
+  namespace: khoj
+spec:
+  selector:
+    app: khoj
+  ports:
+    - name: http
+      port: 42110
+      targetPort: 42110
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: khoj
+  namespace: khoj
+  annotations:
+    cert-manager.io/cluster-issuer: internal-ca
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: khoj.home
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: khoj
+                port:
+                  number: 42110
+  tls:
+    - hosts: [khoj.home]
+      secretName: khoj-tls
