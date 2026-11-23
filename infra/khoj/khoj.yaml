@@ -17,6 +17,10 @@ spec:
       labels:
         app: khoj-db
     spec:
+      # initdb hangs on k3s-worker-z690 with this image; stateful exception.
+      # Generic workloads (server, controllers) are intentionally unpinned.
+      nodeSelector:
+        kubernetes.io/hostname: k3s-node1
       containers:
         - name: db
           image: docker.io/pgvector/pgvector:pg16
