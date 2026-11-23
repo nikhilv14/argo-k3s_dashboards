@@ -1,0 +1,16 @@
+---
+apiVersion: bitnami.com/v1alpha1
+kind: SealedSecret
+metadata:
+  creationTimestamp: null
+  name: qdrant-secret
+  namespace: llm
+spec:
+  encryptedData:
+    api-key: AgBIJdeJKMx5RAwpLcl3LIkXypuFoh1lFRIVW1G5EJq0Ddv8s6w5noi6VDO4YtXukvpGgiwSd/P2ZOmHE3LdWA5WRz0Jvh7oZnySSXmiM2yeRJGJekhExS8d/BgO62LZKzrIb8C3jOhj298y/PjDFLwQX41guj6iQblZWroMmBwkAtqsf6O5Ok7FDFr2oPhEI0M4QRCMVmNvG4usbCIterDhMbcuLIhEHbaToC/P88fszlcc+eN5efoXiEExz0Z6i/ot0/vBdDS/slolNW1FDsJYVF2aUupW2jDeueK6mpYYfS5KM8PKt/z7JsCXz5u91B+epwIcPQNMrwK4+r66RZ0OBW2kiJyAR5ba76QcG9FuYGl8r3AMbDz1M0v3kih2xJ5LeS9XKzDfouNetC5t1jsnnn8XxlXf/FVJ9/b+VYlnVI/VaWxsOmeFVfBPt6Hz7PzC1XoC0t4mqqEchmDEG5T1WlF78DD3Ryd1l2b5EOxSbq5dFCKq355HIm4snYI2VlDpRvJYWtz/j8xCc+AbXRJkrqxu1kq8iQaTcBw4eN5t+NsTl3jRk6HBByqekPlcSZ8LOlqmNE7uh4NLKSF2fHdxWHI9/9xdFBkCRRv12y4EpdZUT3H8Zwr96T0gmeYCdWFMyxgXAjNFD9iTl2Q9Z/7roDFkZ7IDC86pUaFLzz+Abip9ICsqPdU/yPx7r0eNzmoOOdkJhsLttydHfgcT0x9OSH1d/g4RQT24MOi/Hq2n5r6ElnaB+zeo
+  template:
+    metadata:
+      creationTimestamp: null
+      name: qdrant-secret
+      namespace: llm
+    type: Opaque
