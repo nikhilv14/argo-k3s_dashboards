@@ -90,6 +90,11 @@ spec:
             # to the cloud model instead so cloud traffic stays entirely off-box.
             - name: TASK_MODEL
               value: cloud
+            # Default to the Workspace wrapper for the cloud model, not the raw
+            # connection model: only Workspace rows can carry toolIds, so this
+            # is what makes the central RAG corpus tool available in new chats.
+            - name: DEFAULT_MODELS
+              value: cloud-nous
             # Web search was embedding every fetched page into a per-user vector
             # collection (web-search-<user>-...), which pinned the bge-m3 CPU server at
             # ~5.7 cores for minutes after each search. Bypass it: inject the text
