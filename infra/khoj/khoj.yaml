@@ -17,8 +17,6 @@ spec:
       labels:
         app: khoj-db
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k3s-node1
       containers:
         - name: db
           image: docker.io/pgvector/pgvector:pg16
@@ -78,8 +76,6 @@ spec:
       labels:
         app: khoj
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: k3s-node1
       initContainers:
         - name: wait-db
           image: busybox:1.36
@@ -88,7 +84,7 @@ spec:
         - name: khoj
           image: ghcr.io/khoj-ai/khoj:2.0.0-beta.28
           imagePullPolicy: IfNotPresent
-          args: ["--host", "0.0.0.0", "--port", "42110"]
+          args: ["--host", "0.0.0.0", "--port", "42110", "--anonymous-mode"]
           ports:
             - containerPort: 42110
           env:
