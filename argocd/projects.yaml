@@ -93,6 +93,8 @@ spec:
       server: https://kubernetes.default.svc
     - namespace: search
       server: https://kubernetes.default.svc
+    - namespace: khoj
+      server: https://kubernetes.default.svc
     # argocd-metrics: Service + ServiceMonitor for the application-controller metrics
     - namespace: argocd
       server: https://kubernetes.default.svc
