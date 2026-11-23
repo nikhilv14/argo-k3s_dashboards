@@ -1,5 +1,6 @@
 # Khoj 2.0 beta evaluation deployment.
-# Postgres uses emptyDir for now: the iSCSI PVC hung in initdb on this node.
+# All persistent state is on NAS: Postgres on truenas-iscsi, config/model cache
+# on nfs-backed nas-rwx (RWX so the server can float across nodes).
 # Chat goes through the local router (cloud alias); MCP tool server is rag-mcp.
 apiVersion: apps/v1
 kind: StatefulSet
@@ -47,9 +48,15 @@ spec:
               command: ["pg_isready", "-U", "postgres"]
             initialDelaySeconds: 10
             periodSeconds: 10
-      volumes:
-        - name: data
-          emptyDir: {}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: truenas-iscsi
+        resources:
+          requests:
+            storage: 10Gi
 ---
 apiVersion: v1
 kind: Service
@@ -136,6 +143,13 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /root/.khoj
+              subPath: config
+            - name: config
+              mountPath: /root/.cache/torch/sentence_transformers
+              subPath: torch-cache
+            - name: config
+              mountPath: /root/.cache/huggingface
+              subPath: hf-cache
           readinessProbe:
             httpGet:
               path: /
@@ -150,7 +164,21 @@ spec:
               memory: 3Gi
       volumes:
         - name: config
-          emptyDir: {}
+          persistentVolumeClaim:
+            claimName: khoj-config
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: khoj-config
+  namespace: khoj
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: nas-rwx
+  resources:
+    requests:
+      storage: 5Gi
 ---
 apiVersion: v1
 kind: Service
