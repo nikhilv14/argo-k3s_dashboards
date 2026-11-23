@@ -1,0 +1,60 @@
+# Central RAG hub: native service on P1000 VM 114 (192.168.12.245:8765).
+# Service + manual EndpointSlice keep the workload out of Kubernetes while
+# giving cluster consumers a stable DNS name. Same pattern as llama-endpoints.
+apiVersion: v1
+kind: Service
+metadata:
+  name: rag-hub
+  namespace: llm
+spec:
+  ports:
+    - name: http
+      port: 8765
+      targetPort: 8765
+      protocol: TCP
+---
+apiVersion: discovery.k8s.io/v1
+kind: EndpointSlice
+metadata:
+  name: rag-hub-manual
+  namespace: llm
+  labels:
+    kubernetes.io/service-name: rag-hub
+    endpointslice.kubernetes.io/managed-by: user
+addressType: IPv4
+ports:
+  - name: http
+    port: 8765
+    protocol: TCP
+endpoints:
+  - addresses:
+      - 192.168.12.245
+    conditions:
+      ready: true
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rag-hub
+  namespace: llm
+  annotations:
+    cert-manager.io/cluster-issuer: internal-ca
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "300"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: rag.home
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rag-hub
+                port:
+                  number: 8765
+  tls:
+    - hosts:
+        - rag.home
+      secretName: rag-hub-tls

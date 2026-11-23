@@ -9,6 +9,7 @@ resources:
   - litellm.yaml
   - router.yaml
   - embed.yaml
+  - rag-hub.yaml
   - openwebui.yaml
   - ingress.yaml
 configMapGenerator:

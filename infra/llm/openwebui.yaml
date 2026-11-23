@@ -110,11 +110,27 @@ spec:
             - name: RAG_EMBEDDING_ENGINE
               value: openai
             - name: RAG_OPENAI_API_BASE_URL
-              value: http://llm-router.llm.svc.cluster.local:8085/v1
+              value: http://rag-hub.llm.svc.cluster.local:8765/v1
             - name: RAG_OPENAI_API_KEY
               value: sk-local-unused
             - name: RAG_EMBEDDING_MODEL
               value: bge-m3
+            - name: RAG_EMBEDDING_BATCH_SIZE
+              value: "32"
+            - name: RAG_EMBEDDING_CONCURRENT_REQUESTS
+              value: "4"
+            - name: ENABLE_RAG_HYBRID_SEARCH
+              value: "true"
+            - name: RAG_RERANKING_ENGINE
+              value: external
+            - name: RAG_EXTERNAL_RERANKER_URL
+              value: http://rag-hub.llm.svc.cluster.local:8765/v1/rerank
+            - name: RAG_EXTERNAL_RERANKER_API_KEY
+              value: sk-local-unused
+            - name: RAG_EXTERNAL_RERANKER_TIMEOUT
+              value: "30"
+            - name: RAG_RERANKING_MODEL
+              value: bge-reranker-v2-m3
             # Images render on the P1000 (VM 114) via ComfyUI; the 5060 Ti stays on the LLM.
             - name: ENABLE_IMAGE_GENERATION
               value: "true"
