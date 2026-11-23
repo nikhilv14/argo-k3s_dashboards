@@ -1,6 +1,6 @@
-# Khoj 2.0 beta, self-hosted. Postgres/pgvector data on NAS PVC.
-# Chat goes through the local router (cloud alias); embeddings are configured
-# post-install via SearchModelConfig to use the central RAG hub endpoint.
+# Khoj 2.0 beta evaluation deployment.
+# Postgres uses emptyDir for now: the iSCSI PVC hung in initdb on this node.
+# Chat goes through the local router (cloud alias); MCP tool server is rag-mcp.
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -43,15 +43,9 @@ spec:
               command: ["pg_isready", "-U", "postgres"]
             initialDelaySeconds: 10
             periodSeconds: 10
-  volumeClaimTemplates:
-    - metadata:
-        name: data
-      spec:
-        accessModes: [ReadWriteOnce]
-        storageClassName: truenas-iscsi
-        resources:
-          requests:
-            storage: 10Gi
+      volumes:
+        - name: data
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
