@@ -131,24 +131,8 @@ spec:
               value: "30"
             - name: RAG_RERANKING_MODEL
               value: bge-reranker-v2-m3
-            # Images render on the P1000 (VM 114) via ComfyUI; the 5060 Ti stays on the LLM.
-            - name: ENABLE_IMAGE_GENERATION
-              value: "true"
-            - name: IMAGE_GENERATION_ENGINE
-              value: comfyui
-            - name: COMFYUI_BASE_URL
-              value: http://192.168.12.245:8188
-            - name: IMAGE_GENERATION_MODEL
-              value: v1-5-pruned-emaonly-fp16.safetensors
-            - name: IMAGE_SIZE
-              value: 512x512
-            - name: COMFYUI_WORKFLOW
-              value: |
-                {"1": {"class_type": "CheckpointLoaderSimple", "inputs": {"ckpt_name": "v1-5-pruned-emaonly-fp16.safetensors"}}, "2": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["1", 1]}}, "3": {"class_type": "CLIPTextEncode", "inputs": {"text": "blurry, low quality", "clip": ["1", 1]}}, "4": {"class_type": "EmptyLatentImage", "inputs": {"width": 512, "height": 512, "batch_size": 1}}, "5": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 20, "cfg": 7.0, "sampler_name": "euler", "scheduler": "normal", "denoise": 1.0, "model": ["1", 0], "positive": ["2", 0], "negative": ["3", 0], "latent_image": ["4", 0]}}, "6": {"class_type": "VAEDecode", "inputs": {"samples": ["5", 0], "vae": ["1", 2]}}, "7": {"class_type": "SaveImage", "inputs": {"filename_prefix": "webui", "images": ["6", 0]}}}
-            - name: COMFYUI_WORKFLOW_NODES
-              value: |
-                [{"type": "prompt", "node_ids": ["2"], "key": "text"}, {"type": "negative_prompt", "node_ids": ["3"], "key": "text"}, {"type": "width", "node_ids": ["4"], "key": "width"}, {"type": "height", "node_ids": ["4"], "key": "height"}, {"type": "steps", "node_ids": ["5"], "key": "steps"}, {"type": "seed", "node_ids": ["5"], "key": "seed"}]
-            # Chat-triggered image generation requires legacy tool handling.
+            # Image generation removed with the ComfyUI purge; legacy tool
+            # call formatting is kept for the remaining tools.
             - name: DEFAULT_MODEL_PARAMS
               value: '{"function_calling": "legacy"}'
           volumeMounts:
