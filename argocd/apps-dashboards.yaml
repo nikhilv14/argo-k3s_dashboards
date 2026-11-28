@@ -98,3 +98,5 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+      # Seed ConfigMap is ~297 KB; client-side apply exceeds the 256 KB annotation limit.
+      - ServerSideApply=true
