@@ -1,0 +1,79 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: heimdall-lan
+  namespace: admin-dash
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: heimdall-lan
+  template:
+    metadata:
+      labels:
+        app: heimdall-lan
+    spec:
+      securityContext:
+        fsGroup: 1000
+      initContainers:
+        - name: seed
+          image: busybox:1.36
+          command: ['sh', '-c']
+          args:
+            - |
+              set -eu
+              mkdir -p /config/www/icons
+              # Seed only what is missing: tiles added later through the UI survive restarts.
+              if [ ! -f /config/www/app.sqlite ]; then
+                cp /seed/app.sqlite /config/www/app.sqlite
+              fi
+              for f in /seed/*; do
+                b=$(basename "$f")
+                if [ "$b" != "app.sqlite" ] && [ ! -e "/config/www/icons/$b" ]; then
+                  cp "$f" "/config/www/icons/$b"
+                fi
+              done
+              chown -R 1000:1000 /config
+          volumeMounts:
+            - name: config
+              mountPath: /config
+            - name: seed
+              mountPath: /seed
+              readOnly: true
+      containers:
+        - name: heimdall
+          # Digest of the v2.8.3-ls369 image proven working on CT111.
+          image: lscr.io/linuxserver/heimdall@sha256:928b80d532929a3ff4f53bd49437c721e76334a6d4c9d3d992e522b9ccdd08c2
+          env:
+            - name: PUID
+              value: "1000"
+            - name: PGID
+              value: "1000"
+            - name: TZ
+              value: Europe/Dublin
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: config
+              mountPath: /config
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 50m
+              memory: 128Mi
+            limits:
+              memory: 512Mi
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: heimdall-lan-config
+        - name: seed
+          configMap:
+            name: heimdall-lan-seed
